@@ -1,26 +1,14 @@
-#!/bin/bash
+#!/bin/sh
 
-# Regression testing script for MicroC
-# Author: Stephen Edwards
-# Step through a list of files
-#  Compile, run, and check the output of each expected-to-work test
-#  Compile and check the error of each expected-to-fail test
+# Testing script for Joel.
+# Ste through a list of files,
+#  Run and check the output of each expected-to-work test.
+#  Run and check there is an error of each expected-to-fail test.
 
-# Path to the LLVM interpreter
-LLI="lli"
+# Path to to the toplevel, which runs all the tests.
+TOPLEVEL="./toplevel.native"
 
-# Path to the LLVM compiler
-LLC="llc"
-
-# Path to the C compiler
-CC="cc"
-
-# Path to the microc compiler.  Usually "./microc.native"
-# Try "_build/microc.native" if ocamlbuild was unable to create a symbolic link.
-MICROC="./microc.native"
-#MICROC="_build/microc.native"
-
-# Set time limit for all operations
+# Set a time limit for all operations
 ulimit -t 30
 
 globallog=testall.log
@@ -31,10 +19,10 @@ globalerror=0
 keep=0
 
 Usage() {
-    echo "Usage: testall.sh [options] [.mc files]"
-    echo "-k    Keep intermediate files"
+	echo "Usage: testAst.sh [options] [.joel files]"
+	echo "-k    Keep intermediate files"
     echo "-h    Print this help"
-    exit 1
+	exit 1
 }
 
 SignalError() {
@@ -91,11 +79,8 @@ Check() {
 
     generatedfiles=""
 
-    generatedfiles="$generatedfiles ${basename}.ll ${basename}.s ${basename}.exe ${basename}.out" &&
-    Run "$MICROC" "$1" ">" "${basename}.ll" &&
-    Run "$LLC" "${basename}.ll" ">" "${basename}.s" &&
-    Run "$CC" "-o" "${basename}.exe" "${basename}.s" "printbig.o" &&
-    Run "./${basename}.exe" > "${basename}.out" &&
+    generatedfiles="$generatedfiles ${basename}.out" &&
+    Run "$TOPLEVEL" "$1" ">" "${basename}.out" &&
     Compare ${basename}.out ${reffile}.out ${basename}.diff
 
     # Report the status and clean up the generated files
@@ -127,7 +112,7 @@ CheckFail() {
     generatedfiles=""
 
     generatedfiles="$generatedfiles ${basename}.err ${basename}.diff" &&
-    RunFail "$MICROC" "<" $1 "2>" "${basename}.err" ">>" $globallog &&
+    RunFail "$TOPLEVEL" "<" $1 "2>" "${basename}.err" ">>" $globallog &&
     Compare ${basename}.err ${reffile}.err ${basename}.diff
 
     # Report the status and clean up the generated files
@@ -157,26 +142,11 @@ done
 
 shift `expr $OPTIND - 1`
 
-LLIFail() {
-  echo "Could not find the LLVM interpreter \"$LLI\"."
-  echo "Check your LLVM installation and/or modify the LLI variable in testall.sh"
-  exit 1
-}
-
-which "$LLI" >> $globallog || LLIFail
-
-if [ ! -f printbig.o ]
-then
-    echo "Could not find printbig.o"
-    echo "Try \"make printbig.o\""
-    exit 1
-fi
-
 if [ $# -ge 1 ]
 then
     files=$@
 else
-    files="tests/test-*.mc tests/fail-*.mc"
+    files="testsjoel/test-*.joel tests/fail-*.joel"
 fi
 
 for file in $files
