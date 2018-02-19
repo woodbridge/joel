@@ -1,0 +1,5 @@
+num gradeWeWant = 100;
+string whatTownsendThinks = "Joel is awesome.";
+bool isAwesomeLanguage = true;
+list people = list["Mari", "Justin", "Josh", "Nadav"];
+dict grades = dict["Mari":"A+", "Justin":"A+", "Josh":"A+", "Nadav":"A+"];
