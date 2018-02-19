@@ -1,6 +1,7 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type op = Add | Sub | Mult | Div | Mod | And | Or | Xor
+type op = Add | Sub | Mult | Div | Mod | Less | Leq | Greater | Geq | 
+          And | Or | Xor
 
 type uop = Not | Neg
 
@@ -33,6 +34,10 @@ let string_of_op = function
   | Mult -> "*"
   | Div -> "/"
   | Mod -> "%"
+  | Less -> "<"
+  | Leq -> "<="
+  | Greater -> ">"
+  | Geq -> ">="
   | And -> "&"
   | Or -> "|"
   | Xor -> "^"
@@ -54,7 +59,7 @@ let rec string_of_expr = function
 
 let rec string_of_stmt = function
     Expr(expr) -> string_of_expr expr ^ ";\n";
-  | _ -> ""
+  | _ -> "" (* Add other statements here *)
 
 let string_of_typ = function
     Num -> "num"
