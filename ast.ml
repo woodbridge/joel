@@ -1,6 +1,8 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type op = Add | Sub | Mult | Div | Mod
+type op = Add | Sub | Mult | Div | Mod | And | Or | Xor
+
+type uop = Not | Neg
 
 type typ = Num | String | Bool
 
@@ -11,6 +13,7 @@ type expr =
   | BoolLiteral of bool
   | Id of string
   | Binop of expr * op * expr
+  | Unop of uop * expr
   | Assign of string * expr
   | Noexpr
 
@@ -30,6 +33,13 @@ let string_of_op = function
   | Mult -> "*"
   | Div -> "/"
   | Mod -> "%"
+  | And -> "&"
+  | Or -> "|"
+  | Xor -> "^"
+
+let string_of_uop = function
+    Not -> "!"
+  | Neg -> "-"
 
 let rec string_of_expr = function
     IntegerLiteral(l) -> string_of_int l
@@ -38,6 +48,7 @@ let rec string_of_expr = function
   | BoolLiteral(l) -> string_of_bool l
   | Id(s) -> s
   | Binop(e1, op, e2) -> string_of_expr e1 ^ " " ^ string_of_op op ^ " " ^ string_of_expr e2
+  | Unop(uop, e) -> string_of_uop uop ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Noexpr -> ""
 

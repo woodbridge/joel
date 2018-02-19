@@ -15,6 +15,10 @@ rule token = parse
 | '/'      { DIVIDE }
 | '%'	   { MOD }
 | '='      { ASSIGN }
+| '&'	   { AND }
+| '|'	   { OR }
+| '^'	   { XOR }
+| '!'	   { NOT }
 | "num"    { NUM }
 | "string" { STRING }
 | "bool"   { BOOL }
