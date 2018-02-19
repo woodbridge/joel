@@ -9,6 +9,11 @@ rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
 | "/*"     { comment lexbuf }           (* Comments *)
 | ';'      { SEMI }
+| '+'      { PLUS }
+| '-'      { MINUS }
+| '*'      { TIMES }
+| '/'      { DIVIDE }
+| '%'	   { MOD }
 | '='      { ASSIGN }
 | "num"    { NUM }
 | "string" { STRING }

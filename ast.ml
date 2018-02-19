@@ -1,5 +1,7 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
+type op = Add | Sub | Mult | Div | Mod
+
 type typ = Num | String | Bool
 
 type expr = 
@@ -8,6 +10,7 @@ type expr =
   | StringLiteral of string
   | BoolLiteral of bool
   | Id of string
+  | Binop of expr * op * expr
   | Assign of string * expr
   | Noexpr
 
@@ -21,12 +24,20 @@ type program = var_decl list * stmt list
 
 (* Pretty-printing functions *)
 
+let string_of_op = function
+    Add -> "+"
+  | Sub -> "-"
+  | Mult -> "*"
+  | Div -> "/"
+  | Mod -> "%"
+
 let rec string_of_expr = function
     IntegerLiteral(l) -> string_of_int l
   | FloatLiteral(l) -> l
   | StringLiteral(l) -> "\"" ^ l ^ "\""
   | BoolLiteral(l) -> string_of_bool l
   | Id(s) -> s
+  | Binop(e1, op, e2) -> string_of_expr e1 ^ " " ^ string_of_op op ^ " " ^ string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Noexpr -> ""
 

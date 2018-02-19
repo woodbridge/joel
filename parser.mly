@@ -6,6 +6,7 @@ open Ast
 
 %token EOF
 %token SEMI ASSIGN
+%token PLUS MINUS TIMES DIVIDE MOD
 %token NUM STRING BOOL TRUE FALSE
 %token <int> INT_LIT
 %token <string> ID FLOAT_LIT STRING_LIT
@@ -14,6 +15,9 @@ open Ast
 %type <Ast.program> program
 
 %right ASSIGN
+
+%left PLUS MINUS
+%left TIMES DIVIDE MOD
 
 %%
 
@@ -32,8 +36,13 @@ expr:
 	INT_LIT              { IntegerLiteral($1)	}
 	| FLOAT_LIT					 { FloatLiteral($1)		}
   | STRING_LIT         { StringLiteral($1)  }
-  | TRUE               { BoolLiteral(true)      }
-  | FALSE              { BoolLiteral(false)    }
+  | TRUE               { BoolLiteral(true)  }
+  | FALSE              { BoolLiteral(false) }
+  | expr PLUS expr     { Binop($1, Add, $3) }
+  | expr MINUS expr    { Binop($1, Sub, $3) }
+  | expr TIMES expr    { Binop($1, Mult, $3)}
+  | expr DIVIDE expr   { Binop($1, Div, $3) }
+  | expr MOD expr      { Binop($1, Mod, $3) }
 	| ID				         { Id($1)				      }
 	| ID ASSIGN expr 		 { Assign($1, $3)		  }
 
