@@ -1,0 +1,7 @@
+bool a = true;
+bool b = true;
+bool c = false;
+
+if(a && b) {
+	c = true;
+}

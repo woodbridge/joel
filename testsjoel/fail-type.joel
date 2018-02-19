@@ -1,0 +1,2 @@
+num goodGrade = 100;
+int badGrade = 0;
