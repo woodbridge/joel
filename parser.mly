@@ -6,9 +6,9 @@ open Ast
 
 %token EOF
 %token SEMI ASSIGN
-%token NUM
+%token NUM STRING
 %token <int> INT_LIT
-%token <string> ID FLOAT_LIT
+%token <string> ID FLOAT_LIT STRING_LIT
 
 %start program
 %type <Ast.program> program
@@ -29,10 +29,11 @@ stmt:
 	expr SEMI 					{ Expr $1	}
 
 expr:
-	INT_LIT						{ IntegerLiteral($1)	}
-	| FLOAT_LIT					{ FloatLiteral($1)		}
-	| ID						{ Id($1)				}
-	| ID ASSIGN expr 			{ Assign($1, $3)		}
+	INT_LIT              { IntegerLiteral($1)	}
+	| FLOAT_LIT					 { FloatLiteral($1)		}
+  | STRING_LIT         { StringLiteral($1) }
+	| ID				         { Id($1)				}
+	| ID ASSIGN expr 		 { Assign($1, $3)		}
 
 vdecl:
 	typ ID SEMI					{ VarDecl($1, $2, Noexpr)	}
@@ -40,3 +41,4 @@ vdecl:
 
 typ:
 	NUM							{ Num 	}
+  | STRING          { String }

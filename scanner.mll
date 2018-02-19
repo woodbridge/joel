@@ -11,8 +11,10 @@ rule token = parse
 | ';'      { SEMI }
 | '='      { ASSIGN }
 | "num"    { NUM }
+| "string" { STRING }
 | digits as lxm { INT_LIT(int_of_string lxm) }
 | digits '.'  digit* ( ['e' 'E'] ['+' '-']? digits )? as lxm { FLOAT_LIT(lxm) }
+| '"' (([^ '"'] | "\\\"")* as strlit) '"' { STRING_LIT(strlit) } 
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*     as lxm { ID(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }

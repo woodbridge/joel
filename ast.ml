@@ -1,10 +1,11 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type typ = Num
+type typ = Num | String
 
 type expr = 
     IntegerLiteral of int
   | FloatLiteral of string
+  | StringLiteral of string
   | Id of string
   | Assign of string * expr
   | Noexpr
@@ -22,6 +23,7 @@ type program = var_decl list * stmt list
 let rec string_of_expr = function
     IntegerLiteral(l) -> string_of_int l
   | FloatLiteral(l) -> l
+  | StringLiteral(l) -> "\"" ^ l ^ "\""
   | Id(s) -> s
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Noexpr -> ""
@@ -32,7 +34,7 @@ let rec string_of_stmt = function
 
 let string_of_typ = function
     Num -> "num"
-  | _ -> ""
+  | String -> "string"
 
 let string_of_vdecl = function 
    VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id ^ ";\n"
