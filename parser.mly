@@ -6,7 +6,7 @@ open Ast
 
 %token EOF
 %token SEMI ASSIGN
-%token NUM STRING
+%token NUM STRING BOOL TRUE FALSE
 %token <int> INT_LIT
 %token <string> ID FLOAT_LIT STRING_LIT
 
@@ -31,14 +31,17 @@ stmt:
 expr:
 	INT_LIT              { IntegerLiteral($1)	}
 	| FLOAT_LIT					 { FloatLiteral($1)		}
-  | STRING_LIT         { StringLiteral($1) }
-	| ID				         { Id($1)				}
-	| ID ASSIGN expr 		 { Assign($1, $3)		}
+  | STRING_LIT         { StringLiteral($1)  }
+  | TRUE               { BoolLiteral(true)      }
+  | FALSE              { BoolLiteral(false)    }
+	| ID				         { Id($1)				      }
+	| ID ASSIGN expr 		 { Assign($1, $3)		  }
 
 vdecl:
 	typ ID SEMI					{ VarDecl($1, $2, Noexpr)	}
 	| typ ID ASSIGN expr SEMI 	{ VarDecl($1, $2, $4)		}
 
 typ:
-	NUM							{ Num 	}
-  | STRING          { String }
+	NUM							  { Num 	  }
+  | STRING          { String  }
+  | BOOL            { Bool    }

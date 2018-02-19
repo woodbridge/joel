@@ -1,11 +1,12 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type typ = Num | String
+type typ = Num | String | Bool
 
 type expr = 
     IntegerLiteral of int
   | FloatLiteral of string
   | StringLiteral of string
+  | BoolLiteral of bool
   | Id of string
   | Assign of string * expr
   | Noexpr
@@ -24,6 +25,7 @@ let rec string_of_expr = function
     IntegerLiteral(l) -> string_of_int l
   | FloatLiteral(l) -> l
   | StringLiteral(l) -> "\"" ^ l ^ "\""
+  | BoolLiteral(l) -> string_of_bool l
   | Id(s) -> s
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Noexpr -> ""
@@ -35,6 +37,7 @@ let rec string_of_stmt = function
 let string_of_typ = function
     Num -> "num"
   | String -> "string"
+  | Bool -> "bool"
 
 let string_of_vdecl = function 
    VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id ^ ";\n"

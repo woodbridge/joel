@@ -12,6 +12,9 @@ rule token = parse
 | '='      { ASSIGN }
 | "num"    { NUM }
 | "string" { STRING }
+| "bool"   { BOOL }
+| "true"   { TRUE }
+| "false"  { FALSE }
 | digits as lxm { INT_LIT(int_of_string lxm) }
 | digits '.'  digit* ( ['e' 'E'] ['+' '-']? digits )? as lxm { FLOAT_LIT(lxm) }
 | '"' (([^ '"'] | "\\\"")* as strlit) '"' { STRING_LIT(strlit) } 
