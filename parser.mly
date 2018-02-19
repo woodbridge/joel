@@ -7,15 +7,12 @@ open Ast
 %token EOF
 %token SEMI ASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD
-%token LT LEQ GT GEQ
+%token EQ NEQ LT LEQ GT GEQ
 %token AND OR XOR NOT
 
 %token NUM STRING BOOL TRUE FALSE
 %token <int> INT_LIT
 %token <string> ID FLOAT_LIT STRING_LIT
-
-%start program
-%type <Ast.program> program
 
 %right ASSIGN
 
@@ -26,15 +23,18 @@ open Ast
 %left TIMES DIVIDE MOD
 %right NOT NEG
 
+%start program
+%type <Ast.program> program
+
 %%
 
 program:
  	decls EOF					{ $1	}
 
 decls:
-	  /* nothing */ 			{ ([], [])               }
+	  /* nothing */ 			{ ([], [])                 }
  	| decls vdecl 				{ (($2 :: fst $1), snd $1) }
- 	| decls stmt				{ (fst $1, ($2 :: snd $1)) }
+ 	| decls stmt				  { (fst $1, ($2 :: snd $1)) }
 
 stmt:
 	expr SEMI 					{ Expr $1	}
@@ -50,6 +50,8 @@ expr:
   | expr TIMES expr       { Binop($1, Mult, $3)     }
   | expr DIVIDE expr      { Binop($1, Div, $3)      }
   | expr MOD expr         { Binop($1, Mod, $3)      }
+  | expr EQ expr          { Binop ($1, Equal, $3)   }
+  | expr NEQ expr         { Binop ($1, Neq,   $3)   }
   | expr LT expr          { Binop($1, Less, $3)     }
   | expr LEQ expr         { Binop($1, Leq, $3)      }
   | expr GT expr          { Binop($1, Greater, $3)  }

@@ -15,6 +15,8 @@ rule token = parse
 | '/'      { DIVIDE }
 | '%'	   { MOD }
 | '='      { ASSIGN }
+| "=="     { EQ }
+| "!="     { NEQ }
 | '<'      { LT }
 | "<="     { LEQ }
 | ">"      { GT }
