@@ -14,6 +14,8 @@ rule token = parse
 | '*'      { TIMES }
 | '/'      { DIVIDE }
 | '%'	   { MOD }
+| "++"     { INCREMENT }
+| "--"     { DECREMENT }
 | '='      { ASSIGN }
 | "+="     { PLUSASSIGN }
 | "-="     { MINUSASSIGN }

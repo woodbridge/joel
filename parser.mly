@@ -5,8 +5,9 @@ open Ast
 %}
 
 /* Token Declaration */
-%token SEMI ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
-%token PLUS MINUS TIMES DIVIDE MOD
+%token SEMI 
+%token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
+%token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
 %token AND OR XOR NOT
 
@@ -65,6 +66,8 @@ expr:
   | NOT expr              { Unop(Not, $2)           }
   | MINUS expr %prec NEG  { Unop(Neg, $2)           }
 	| ID				            { Id($1)				          }
+  | ID INCREMENT          { Pop($1, Inc)            }
+  | ID DECREMENT          { Pop($1, Dec)            }
 	| ID ASSIGN expr 		    { Assign($1, $3)		      }
   | ID PLUSASSIGN expr    { AssignOp($1, Add, $3)   }
   | ID MINUSASSIGN expr   { AssignOp($1, Sub, $3)   }

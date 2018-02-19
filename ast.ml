@@ -5,6 +5,8 @@ type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Ge
 
 type uop = Not | Neg
 
+type pop = Inc | Dec
+
 type typ = Num | String | Bool
 
 type expr = 
@@ -15,6 +17,7 @@ type expr =
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
+  | Pop of string * pop
   | Assign of string * expr
   | AssignOp of string * op * expr
   | Noexpr
@@ -49,6 +52,10 @@ let string_of_uop = function
     Not -> "!"
   | Neg -> "-"
 
+let string_of_pop = function
+    Inc -> "++"
+  | Dec -> "--"
+
 let rec string_of_expr = function
     IntegerLiteral(l) -> string_of_int l
   | FloatLiteral(l) -> l
@@ -57,6 +64,7 @@ let rec string_of_expr = function
   | Id(s) -> s
   | Binop(e1, op, e2) -> string_of_expr e1 ^ " " ^ string_of_op op ^ " " ^ string_of_expr e2
   | Unop(uop, e) -> string_of_uop uop ^ string_of_expr e
+  | Pop(s, pop) -> s ^ string_of_pop pop
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | AssignOp(v, op, e) -> v ^ string_of_op op ^ "=" ^string_of_expr e
   | Noexpr -> ""
