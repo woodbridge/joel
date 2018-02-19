@@ -9,7 +9,29 @@ rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
 | "/*"     { comment lexbuf }           (* Comments *)
 | ';'      { SEMI }
+| '+'      { PLUS }
+| '-'      { MINUS }
+| '*'      { TIMES }
+| '/'      { DIVIDE }
+| '%'	   { MOD }
+| "++"     { INCREMENT }
+| "--"     { DECREMENT }
 | '='      { ASSIGN }
+| "+="     { PLUSASSIGN }
+| "-="     { MINUSASSIGN }
+| "*="     { TIMESASSIGN }
+| "/="     { DIVIDEASSIGN }
+| "%="	   { MODASSIGN }
+| "=="     { EQ }
+| "!="     { NEQ }
+| '<'      { LT }
+| "<="     { LEQ }
+| ">"      { GT }
+| ">="     { GEQ }
+| '&'	   { AND }
+| '|'	   { OR }
+| '^'	   { XOR }
+| '!'	   { NOT }
 | "num"    { NUM }
 | "string" { STRING }
 | "bool"   { BOOL }
