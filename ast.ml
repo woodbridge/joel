@@ -16,6 +16,7 @@ type expr =
   | Binop of expr * op * expr
   | Unop of uop * expr
   | Assign of string * expr
+  | AssignOp of string * op * expr
   | Noexpr
 
 type stmt = 
@@ -57,6 +58,7 @@ let rec string_of_expr = function
   | Binop(e1, op, e2) -> string_of_expr e1 ^ " " ^ string_of_op op ^ " " ^ string_of_expr e2
   | Unop(uop, e) -> string_of_uop uop ^ string_of_expr e
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | AssignOp(v, op, e) -> v ^ string_of_op op ^ "=" ^string_of_expr e
   | Noexpr -> ""
 
 let rec string_of_stmt = function
