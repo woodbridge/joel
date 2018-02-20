@@ -50,6 +50,7 @@ stmt_list:
 
 stmt:
   	expr SEMI 					                    { Expr $1	}
+  | vdecl                                   { StmtVDecl $1 }
   | RETURN expr_opt SEMI                    { Return $2             }
   | LBRACE stmt_list RBRACE                 { Block(List.rev $2)    }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
