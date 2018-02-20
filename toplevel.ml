@@ -2,7 +2,7 @@
    Scan and parse the input. *)
 
 let () =
-	let usage_msg = "usage: ./toplevel.native [file.mc]" in
+	let usage_msg = "usage: ./toplevel.native [file.joel]" in
 	let channel = ref stdin in
 
 	(* Take the file to compile as a command-line arg *)
