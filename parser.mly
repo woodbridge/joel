@@ -58,6 +58,10 @@ stmt:
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7)        }
   | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
                                             { For($3, $5, $7, $9)   }
+
+  | FOR LPAREN vdecl expr SEMI expr_opt RPAREN stmt
+                                            { ForDecl($3, $4, $6, $8)   }
+
   | FOREACH LPAREN typ expr IN expr RPAREN stmt
                                             { ForEach($3, $4, $6)  }  
   | WHILE LPAREN expr RPAREN stmt           { While($3, $5)         }
