@@ -1,0 +1,3 @@
+foreach(num age in ages) {
+  num name = 10;
+}

@@ -31,6 +31,7 @@ type stmt =
   | Return of expr
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
+  | ForEach of typ * expr * expr
   | While of expr * stmt
 
 

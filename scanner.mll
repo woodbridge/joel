@@ -39,6 +39,8 @@ rule token = parse
 | "if"     { IF }
 | "else"   { ELSE }
 | "for"    { FOR }
+| "foreach" { FOREACH }
+| "in"     { IN }
 | "while"  { WHILE }
 | "return" { RETURN }
 | "num"    { NUM }

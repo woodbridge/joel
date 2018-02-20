@@ -9,8 +9,9 @@ open Ast
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
-%token RETURN IF ELSE FOR WHILE INT BOOL FLOAT VOID
+%token RETURN IF ELSE FOR FOREACH IN WHILE INT BOOL FLOAT VOID
 %token AND OR XOR NOT
+
 
 %token NUM STRING BOOL TRUE FALSE
 %token <int> INT_LIT
@@ -57,6 +58,8 @@ stmt:
   | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7)        }
   | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
                                             { For($3, $5, $7, $9)   }
+  | FOREACH LPAREN typ expr IN expr RPAREN stmt
+                                            { ForEach($3, $4, $6)  }  
   | WHILE LPAREN expr RPAREN stmt           { While($3, $5)         }
 
 expr_opt:
