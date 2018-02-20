@@ -2,5 +2,5 @@
 
 ### Testing the parser
 
-``ocamlbuild toplevel.native``
-``./toplevel.native <testfile>``
+- ``ocamlbuild toplevel.native``
+- ``./toplevel.native <testfile>``
