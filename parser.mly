@@ -5,7 +5,7 @@ open Ast
 %}
 
 /* Token Declaration */
-%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA
+%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE COLON
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
@@ -13,7 +13,7 @@ open Ast
 %token AND OR XOR NOT
 
 
-%token NUM STRING BOOL TRUE FALSE
+%token NUM STRING BOOL LIST DICT TRUE FALSE
 %token <int> INT_LIT
 %token <string> ID FLOAT_LIT STRING_LIT
 %token EOF
@@ -63,7 +63,7 @@ stmt:
                                             { ForDecl($3, $4, $6, $8)   }
 
   | FOREACH LPAREN typ expr IN expr RPAREN stmt
-                                            { ForEach($3, $4, $6)  }  
+                                            { ForEach($3, $4, $6)  }
   | WHILE LPAREN expr RPAREN stmt           { While($3, $5)         }
 
 expr_opt:
@@ -101,6 +101,28 @@ expr:
   | ID TIMESASSIGN expr   { AssignOp($1, Mult, $3)  }
   | ID DIVIDEASSIGN expr  { AssignOp($1, Div, $3)   }
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
+  | LSQBRACE list_literal RSQBRACE { ListLiteral(List.rev $2) }
+  | LSQBRACE dict_literal RSQBRACE { DictLiteral(List.rev $2) }
+
+primitives:
+    INT_LIT           { IntegerLiteral($1) }
+  | FLOAT_LIT         { FloatLiteral($1) }
+  | STRING_LIT        { StringLiteral($1) }
+  | TRUE                  { BoolLiteral(true)       }
+  | FALSE                 { BoolLiteral(false)      }
+  | LSQBRACE list_literal RSQBRACE { ListLiteral(List.rev $2) }
+  | LSQBRACE dict_literal RSQBRACE { DictLiteral(List.rev $2) }
+
+list_literal:
+    primitives                      { [$1] }
+  | list_literal COMMA primitives { $3 :: $1 }
+
+key_val:
+    primitives COLON primitives   { ($1,$3) }
+
+dict_literal:
+    key_val   { [$1] }
+  | dict_literal COMMA key_val { $3 :: $1 }
 
 function_name:
   ID { $1 }
@@ -135,3 +157,5 @@ typ:
 	NUM							  { Num 	  }
   | STRING          { String  }
   | BOOL            { Bool    }
+  | LIST            { List    }
+  | DICT            { Dict    }
