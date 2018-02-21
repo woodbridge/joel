@@ -37,23 +37,15 @@ type stmt =
   | ForEach of typ * expr * expr
   | While of expr * stmt
 
-type function_name = FName of string
-
 type formal = Formal of typ * string
+type func_decl = FuncDecl of typ * string * stmt list * formal list
 
-type func_decl = {
-  returnType : typ;
-  function_name: function_name;
-  body : stmt list;
-  args : formal list
-}
-
-type program = var_decl list * stmt list
+type program = func_decl list * stmt list
 
 
 (* Pretty-printing functions *)
 
-let string_of_op = function
+(* let string_of_op = function
     Add -> "+"
   | Sub -> "-"
   | Mult -> "*"
@@ -101,12 +93,19 @@ let rec string_of_expr = function
 
 let rec string_of_stmt = function
     Expr(expr) -> string_of_expr expr ^ ";\n";
-  | _ -> "" (* Add other statements here *)
+  | Block(l) -> String.concat "" (List.map string_of_stmt l) ^ "\n"
+  | StmtVDecl(v) -> string_of_vdecl v
+  | Return(e) -> "return " ^ string_of_expr e
+  | If(e, s1, s2) -> "if (" ^ string_of_expr e ^ ") {\n" ^ string_of_stmt s1 ^ "\n} else  {\n" ^ string_of_stmt ^ "}\n"
+  | For(e1, e2, e3, s) -> "for (" ^ string_of_expr e1 ^ "; " ^ string_of_expr e2 ^ "; " ^ string_of_expr e3 ^ ") {\n" ^ string_of_stmt s "}\n"
 
 let string_of_vdecl = function
    VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id ^ ";\n"
   | VarDecl(t, id, e) -> string_of_typ t ^ " " ^ id ^  "=" ^ string_of_expr e ^ ";\n"
 
-let string_of_program (vars, stmts) =
-  String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_stmt stmts)
+let string_of_fdecl = function
+    FuncDecl(t, id, stmts, args) -> string_of_typ t ^ " " ^ id ^ " " 
+
+let string_of_program (funcs, stmts) =
+  String.concat "" (List.map string_of_fdecl funcs) ^ "\n" ^
+  String.concat "\n" (List.map string_of_stmt stmts) *)
