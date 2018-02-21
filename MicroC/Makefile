@@ -18,7 +18,7 @@ microc.native :
 .PHONY : clean
 clean :
 	ocamlbuild -clean
-	rm -rf testall.log *.diff microc scanner.ml parser.ml parser.mli
+	rm -rf testall.log *.diff scanner.ml parser.ml parser.mli
 	rm -rf printbig
 	rm -rf *.cmx *.cmi *.cmo *.cmx *.o *.s *.ll *.out *.exe
 
