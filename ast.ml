@@ -1,19 +1,21 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq | 
+type op = Add | Sub | Mult | Div | Mod | Equal | Neq | Less | Leq | Greater | Geq |
           And | Or | Xor
 
 type uop = Not | Neg
 
 type pop = Inc | Dec
 
-type typ = Num | String | Bool
+type typ = Num | String | Bool | List | Dict
 
-type expr = 
+type expr =
     IntegerLiteral of int
   | FloatLiteral of string
   | StringLiteral of string
   | BoolLiteral of bool
+  | ListLiteral of expr list
+  | DictLiteral of (expr * expr) list
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
@@ -65,11 +67,20 @@ let string_of_pop = function
     Inc -> "++"
   | Dec -> "--"
 
+let string_of_typ = function
+    Num -> "num"
+  | String -> "string"
+  | Bool -> "bool"
+  | List -> "list"
+  | Dict -> "dict"
+
 let rec string_of_expr = function
     IntegerLiteral(l) -> string_of_int l
   | FloatLiteral(l) -> l
   | StringLiteral(l) -> "\"" ^ l ^ "\""
   | BoolLiteral(l) -> string_of_bool l
+  | ListLiteral(l) -> "List"
+  | DictLiteral(l) -> "Dict"
   | Id(s) -> s
   | Binop(e1, op, e2) -> string_of_expr e1 ^ " " ^ string_of_op op ^ " " ^ string_of_expr e2
   | Unop(uop, e) -> string_of_uop uop ^ string_of_expr e
@@ -82,12 +93,7 @@ let rec string_of_stmt = function
     Expr(expr) -> string_of_expr expr ^ ";\n";
   | _ -> "" (* Add other statements here *)
 
-let string_of_typ = function
-    Num -> "num"
-  | String -> "string"
-  | Bool -> "bool"
-
-let string_of_vdecl = function 
+let string_of_vdecl = function
    VarDecl(t, id, Noexpr) -> string_of_typ t ^ " " ^ id ^ ";\n"
   | VarDecl(t, id, e) -> string_of_typ t ^ " " ^ id ^  "=" ^ string_of_expr e ^ ";\n"
 

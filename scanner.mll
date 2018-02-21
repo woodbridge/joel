@@ -8,8 +8,12 @@ let digits = digit+
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
 | "/*"     { comment lexbuf }           (* Comments *)
+| ':'      { COLON }
+| ','      { COMMA }
 | '('      { LPAREN }
 | ')'      { RPAREN }
+| '['      { LSQBRACE }
+| ']'      { RSQBRACE }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
 | ';'      { SEMI }
@@ -46,12 +50,14 @@ rule token = parse
 | "num"    { NUM }
 | "string" { STRING }
 | "bool"   { BOOL }
+| "list"   { LIST }
+| "dict"   { DICT }
 | "true"   { TRUE }
 | "false"  { FALSE }
 | digits as lxm { INT_LIT(int_of_string lxm) }
 | digits '.'  digit* ( ['e' 'E'] ['+' '-']? digits )? as lxm { FLOAT_LIT(lxm) }
-| '"' (([^ '"'] | "\\\"")* as strlit) '"' { STRING_LIT(strlit) } 
-| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*     as lxm { ID(lxm) }
+| '"' (([^ '"'] | "\\\"")* as strlit) '"' { STRING_LIT(strlit) }
+| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 

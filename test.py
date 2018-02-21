@@ -6,7 +6,7 @@ import subprocess
 def test(filestring):
 	files = glob.glob(filestring)
 	for file in files:
-		result = subprocess.run(['./toplevel.native', file], 
+		result = subprocess.run(['./toplevel.native', file],
 			stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.decode('utf-8')
 
 		print("Running... " + file)
@@ -23,7 +23,7 @@ def test_pass():
 	print("(These should PASS)")
 
 	test("tests/test-*.joel")
-	
+
 # run failing test cases
 def test_fail():
 	print("\n")
@@ -33,7 +33,7 @@ def test_fail():
 	test("tests/fail-*.joel")
 
 # MAIN
-subprocess.run(['ocamlbuild', 'toplevel.native'], 
+subprocess.run(['ocamlbuild', 'toplevel.native'],
 	stdout=subprocess.PIPE, stderr = subprocess.PIPE)
 test_pass()
 test_fail()
