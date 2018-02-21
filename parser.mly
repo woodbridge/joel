@@ -5,6 +5,7 @@ open Ast
 %}
 
 /* Token Declaration */
+
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE COLON
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
@@ -42,8 +43,8 @@ program:
 
 decls:
 	  /* nothing */ 			{ ([], [])                 }
- 	| decls vdecl   				{ (($2 :: fst $1), snd $1) }
- 	| decls stmt 			  { (fst $1, ($2 :: snd $1)) }
+ 	| decls fdecl   			{ (($2 :: fst $1), snd $1) }
+ 	| decls stmt 			    { (fst $1, ($2 :: snd $1)) }
 
 stmt_list:
     /* nothing */  { [] }
@@ -124,19 +125,9 @@ dict_literal:
     key_val   { [$1] }
   | dict_literal COMMA key_val { $3 :: $1 }
 
-function_name:
-  ID { $1 }
+fdecl: 
+  typ ID LPAREN arg_list_toplevel RPAREN LBRACE stmt_list RBRACE { FuncDecl ($1, $2, List.rev $7, $4) }
 
-fdecl:
-    typ function_name LPAREN arg_list_toplevel RPAREN LBRACE stmt_list RBRACE 
-    {
-      {
-        function_name = FName($2);
-        returnType = $1;
-        formals = $4;
-        body = List.rev $7;
-      }
-    }
 
 arg_list_toplevel:
                { [] }
@@ -150,7 +141,7 @@ formal:
   typ ID { Formal($1, $2) }
 
 vdecl:
-	typ ID SEMI					{ VarDecl($1, $2, Noexpr)	}
+	  typ ID SEMI					      { VarDecl($1, $2, Noexpr)	}
 	| typ ID ASSIGN expr SEMI 	{ VarDecl($1, $2, $4)		}
 
 typ:
