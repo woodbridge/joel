@@ -5,11 +5,13 @@ open Ast
 %}
 
 /* Token Declaration */
-%token SEMI 
+%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
+%token RETURN IF ELSE FOR FOREACH IN WHILE INT BOOL FLOAT VOID
 %token AND OR XOR NOT
+
 
 %token NUM STRING BOOL TRUE FALSE
 %token <int> INT_LIT
@@ -18,6 +20,9 @@ open Ast
 
 
 /* Associativity and Precedence */
+
+%nonassoc NOELSE
+%nonassoc ELSE
 %right ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 
 %left XOR OR
@@ -40,8 +45,30 @@ decls:
  	| decls vdecl 				{ (($2 :: fst $1), snd $1) }
  	| decls stmt				  { (fst $1, ($2 :: snd $1)) }
 
+stmt_list:
+    /* nothing */  { [] }
+  | stmt_list stmt { $2 :: $1 }
+
 stmt:
-	expr SEMI 					{ Expr $1	}
+  	expr SEMI 					                    { Expr $1	}
+  | vdecl                                   { StmtVDecl $1 }
+  | RETURN expr_opt SEMI                    { Return $2             }
+  | LBRACE stmt_list RBRACE                 { Block(List.rev $2)    }
+  | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
+  | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7)        }
+  | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
+                                            { For($3, $5, $7, $9)   }
+
+  | FOR LPAREN vdecl expr SEMI expr_opt RPAREN stmt
+                                            { ForDecl($3, $4, $6, $8)   }
+
+  | FOREACH LPAREN typ expr IN expr RPAREN stmt
+                                            { ForEach($3, $4, $6)  }  
+  | WHILE LPAREN expr RPAREN stmt           { While($3, $5)         }
+
+expr_opt:
+    /* nothing */ { Noexpr }
+  | expr          { $1 }
 
 expr:
 	INT_LIT                 { IntegerLiteral($1)      }

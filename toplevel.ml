@@ -3,7 +3,7 @@
    upon successfully parsing the input, or prints the parser error if it fails. *)
 
 let () =
-	let usage_msg = "usage: ./toplevel.native [file.mc]" in
+	let usage_msg = "usage: ./toplevel.native [file.joel]" in
 	let channel = ref stdin in
 
 	(* Take the file to compile as a command-line arg *)

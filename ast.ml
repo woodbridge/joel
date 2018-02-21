@@ -22,10 +22,19 @@ type expr =
   | AssignOp of string * op * expr
   | Noexpr
 
-type stmt = 
-    Expr of expr
-
 type var_decl = VarDecl of typ * string * expr
+
+type stmt =
+    Block of stmt list
+  | Expr of expr
+  | StmtVDecl of var_decl
+  | Return of expr
+  | If of expr * stmt * stmt
+  | For of expr * expr * expr * stmt
+  | ForDecl of var_decl * expr * expr * stmt
+  | ForEach of typ * expr * expr
+  | While of expr * stmt
+
 
 type program = var_decl list * stmt list
 
