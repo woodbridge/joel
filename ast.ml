@@ -9,6 +9,10 @@ type pop = Inc | Dec
 
 type typ = Num | String | Bool
 
+type function_name = FName of string
+
+type formal = Formal of typ * string
+
 type expr = 
     IntegerLiteral of int
   | FloatLiteral of string
@@ -35,6 +39,12 @@ type stmt =
   | ForEach of typ * expr * expr
   | While of expr * stmt
 
+type func_decl = {
+  returnType : typ;
+  function_name: function_name;
+  body : stmt list;
+  args : formal list
+}
 
 type program = var_decl list * stmt list
 

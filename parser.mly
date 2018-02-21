@@ -102,6 +102,31 @@ expr:
   | ID DIVIDEASSIGN expr  { AssignOp($1, Div, $3)   }
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
 
+function_name:
+  ID { $1 }
+
+fdecl:
+    typ function_name LPAREN arg_list_toplevel RPAREN LBRACE stmt_list RBRACE
+    {
+      {
+        function_name = FName($2);
+        returnType = $1;
+        formals = $4;
+        body = List.rev $7;
+      }
+    }
+
+arg_list_toplevel:
+               { [] }
+  | arg_list   { List.rev $1 }
+
+arg_list:
+    formal          { [$1] }
+  | arg_list COMMA formal { $3 :: $1 }
+
+formal:
+  typ ID { Formal($1, $2) }
+
 vdecl:
 	typ ID SEMI					{ VarDecl($1, $2, Noexpr)	}
 	| typ ID ASSIGN expr SEMI 	{ VarDecl($1, $2, $4)		}
