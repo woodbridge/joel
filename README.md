@@ -9,4 +9,4 @@
 - ``./toplevel.native <testfile>``
 
 #### To run the test suite (Requires python3):
-- ``python3 test.py`
+- ``python3 test.py``
