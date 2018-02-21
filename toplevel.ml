@@ -10,5 +10,5 @@ let () =
 	Arg.parse [] (fun filename -> channel := open_in filename) usage_msg;
 	
 	let lexbuf = Lexing.from_channel !channel in
-	let ast = Parser.program Scanner.token lexbuf in
+	let _ = Parser.program Scanner.token lexbuf in
 	print_string "Success"
