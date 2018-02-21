@@ -1,2 +1,2 @@
-int a = 1;
-int b = a++;
+num a = 1;
+num b = a++;

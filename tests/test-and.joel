@@ -2,6 +2,6 @@ bool a = true;
 bool b = true;
 bool c = false;
 
-if(a && b) {
+if(a & b) {
 	c = true;
 }
