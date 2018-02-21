@@ -27,10 +27,10 @@ open Ast
 
 %left XOR OR
 %left AND
-%left LT GT LEQ GEQ
+%left LT GT LEQ GEQ EQ NEQ
 %left PLUS MINUS
 %left TIMES DIVIDE MOD
-%right NOT NEG
+%right NOT NEG 
 
 %start program
 %type <Ast.program> program
@@ -42,8 +42,8 @@ program:
 
 decls:
 	  /* nothing */ 			{ ([], [])                 }
- 	| decls vdecl 				{ (($2 :: fst $1), snd $1) }
- 	| decls stmt				  { (fst $1, ($2 :: snd $1)) }
+ 	| decls vdecl   				{ (($2 :: fst $1), snd $1) }
+ 	| decls stmt 			  { (fst $1, ($2 :: snd $1)) }
 
 stmt_list:
     /* nothing */  { [] }
@@ -128,7 +128,7 @@ function_name:
   ID { $1 }
 
 fdecl:
-    typ function_name LPAREN arg_list_toplevel RPAREN LBRACE stmt_list RBRACE
+    typ function_name LPAREN arg_list_toplevel RPAREN LBRACE stmt_list RBRACE 
     {
       {
         function_name = FName($2);
