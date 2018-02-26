@@ -5,8 +5,7 @@ open Ast
 %}
 
 /* Token Declaration */
-
-%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE COLON
+%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE COLON SEMI
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
@@ -14,7 +13,7 @@ open Ast
 %token AND OR XOR NOT
 
 
-%token NUM STRING BOOL LIST DICT TRUE FALSE
+%token NUM STRING BOOL LIST DICT TABLE TRUE FALSE
 %token <int> INT_LIT
 %token <string> ID FLOAT_LIT STRING_LIT
 %token EOF
@@ -31,7 +30,7 @@ open Ast
 %left LT GT LEQ GEQ EQ NEQ
 %left PLUS MINUS
 %left TIMES DIVIDE MOD
-%right NOT NEG 
+%right NOT NEG
 
 %start program
 %type <Ast.program> program
@@ -104,6 +103,7 @@ expr:
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
   | LSQBRACE list_literal RSQBRACE { ListLiteral(List.rev $2) }
   | LSQBRACE dict_literal RSQBRACE { DictLiteral(List.rev $2) }
+  | LPAREN table_literal RPAREN { TableLiteral(List.rev $2) }
 
 primitives:
     INT_LIT           { IntegerLiteral($1) }
@@ -125,7 +125,11 @@ dict_literal:
     key_val   { [$1] }
   | dict_literal COMMA key_val { $3 :: $1 }
 
-fdecl: 
+table_literal:
+    list_literal                    { [$1] }
+  | table_literal SEMI list_literal  { $3 :: $1 }
+
+fdecl:
   typ ID LPAREN arg_list_toplevel RPAREN LBRACE stmt_list RBRACE { FuncDecl ($1, $2, List.rev $7, $4) }
 
 
@@ -150,3 +154,4 @@ typ:
   | BOOL            { Bool    }
   | LIST            { List    }
   | DICT            { Dict    }
+  | TABLE           { Table   }

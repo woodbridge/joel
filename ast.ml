@@ -7,7 +7,7 @@ type uop = Not | Neg
 
 type pop = Inc | Dec
 
-type typ = Num | String | Bool | List | Dict
+type typ = Num | String | Bool | List | Dict | Table
 
 type expr =
     IntegerLiteral of int
@@ -16,6 +16,7 @@ type expr =
   | BoolLiteral of bool
   | ListLiteral of expr list
   | DictLiteral of (expr * expr) list
+  | TableLiteral of (expr list) list
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
@@ -104,7 +105,7 @@ let string_of_vdecl = function
   | VarDecl(t, id, e) -> string_of_typ t ^ " " ^ id ^  "=" ^ string_of_expr e ^ ";\n"
 
 let string_of_fdecl = function
-    FuncDecl(t, id, stmts, args) -> string_of_typ t ^ " " ^ id ^ " " 
+    FuncDecl(t, id, stmts, args) -> string_of_typ t ^ " " ^ id ^ " "
 
 let string_of_program (funcs, stmts) =
   String.concat "" (List.map string_of_fdecl funcs) ^ "\n" ^
