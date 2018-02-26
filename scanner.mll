@@ -51,6 +51,7 @@ rule token = parse
 | "string" { STRING }
 | "bool"   { BOOL }
 | "list"   { LIST }
+| "table"  { TABLE }
 | "dict"   { DICT }
 | "true"   { TRUE }
 | "false"  { FALSE }
