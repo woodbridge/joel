@@ -15,8 +15,8 @@ type expr =
   | StringLiteral of string
   | BoolLiteral of bool
   | ListLiteral of expr list
-  | TableLiteral of (expr list) list
   | DictLiteral of (expr * expr) list
+  | TableLiteral of (expr list) list
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr

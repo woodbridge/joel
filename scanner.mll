@@ -14,9 +14,9 @@ rule token = parse
 | ')'      { RPAREN }
 | '['      { LSQBRACE }
 | ']'      { RSQBRACE }
+| ';'      { SEMI }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
-| ';'      { SEMI }
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '*'      { TIMES }
@@ -51,8 +51,8 @@ rule token = parse
 | "string" { STRING }
 | "bool"   { BOOL }
 | "list"   { LIST }
-| "table"  { TABLE }
 | "dict"   { DICT }
+| "table"  { TABLE }
 | "true"   { TRUE }
 | "false"  { FALSE }
 | digits as lxm { INT_LIT(int_of_string lxm) }
