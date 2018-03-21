@@ -17,6 +17,8 @@ rule token = parse
 | ';'      { SEMI }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
+| '<'	   { LPOINTY }
+| '>'	   { RPOINTY }
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '*'      { TIMES }

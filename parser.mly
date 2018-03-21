@@ -5,7 +5,7 @@ open Ast
 %}
 
 /* Token Declaration */
-%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE COLON SEMI
+%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
@@ -20,7 +20,6 @@ open Ast
 
 
 /* Associativity and Precedence */
-
 %nonassoc NOELSE
 %nonassoc ELSE
 %right ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
@@ -38,7 +37,7 @@ open Ast
 %%
 
 program:
- 	decls EOF					{ $1	}
+ 	decls EOF					    { $1	}
 
 decls:
 	  /* nothing */ 			{ ([], [])                 }
@@ -46,8 +45,8 @@ decls:
  	| decls stmt 			    { (fst $1, ($2 :: snd $1)) }
 
 stmt_list:
-    /* nothing */  { [] }
-  | stmt_list stmt { $2 :: $1 }
+    /* nothing */       { [] }
+  | stmt_list stmt      { $2 :: $1 }
 
 stmt:
   	expr SEMI 					                    { Expr $1	}
@@ -101,54 +100,61 @@ expr:
   | ID TIMESASSIGN expr   { AssignOp($1, Mult, $3)  }
   | ID DIVIDEASSIGN expr  { AssignOp($1, Div, $3)   }
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
-  | ID LPAREN args_opt RPAREN { Call($1, $3)        }
+  | ID LPAREN args_opt RPAREN 
+                          { Call($1, $3)        }
   | LPAREN expr RPAREN    { $2                      }
-  | LSQBRACE list_literal RSQBRACE { ListLiteral(List.rev $2) }
-  | LSQBRACE dict_literal RSQBRACE { DictLiteral(List.rev $2) }
-  | LPAREN table_literal RPAREN { TableLiteral(List.rev $2) }
+  | LSQBRACE list_literal RSQBRACE 
+                          { ListLiteral(List.rev $2) }
+  | LSQBRACE dict_literal RSQBRACE 
+                          { DictLiteral(List.rev $2) }
+  | LPOINTY table_literal RPOINTY 
+                          { TableLiteral(List.rev $2) }
 
 primitives:
-    INT_LIT           { IntegerLiteral($1) }
-  | FLOAT_LIT         { FloatLiteral($1) }
-  | STRING_LIT        { StringLiteral($1) }
+    INT_LIT               { IntegerLiteral($1) }
+  | FLOAT_LIT             { FloatLiteral($1) }
+  | STRING_LIT            { StringLiteral($1) }
   | TRUE                  { BoolLiteral(true)       }
   | FALSE                 { BoolLiteral(false)      }
-  | LSQBRACE list_literal RSQBRACE { ListLiteral(List.rev $2) }
-  | LSQBRACE dict_literal RSQBRACE { DictLiteral(List.rev $2) }
+  | LSQBRACE list_literal RSQBRACE 
+                          { ListLiteral(List.rev $2) }
+  | LSQBRACE dict_literal RSQBRACE 
+                          { DictLiteral(List.rev $2) }
 
 list_literal:
-    primitives                      { [$1] }
-  | list_literal COMMA primitives { $3 :: $1 }
+    primitives                    { [$1]      }
+  | list_literal COMMA primitives { $3 :: $1  }
 
 key_val:
-    primitives COLON primitives   { ($1,$3) }
+    primitives COLON primitives   { ($1,$3)   }
 
 dict_literal:
     key_val   { [$1] }
-  | dict_literal COMMA key_val { $3 :: $1 }
+  | dict_literal COMMA key_val    { $3 :: $1  }
 
 table_literal:
-    list_literal                    { [$1] }
-  | table_literal SEMI list_literal  { $3 :: $1 }
+    list_literal                  { [$1]      }
+  | table_literal SEMI list_literal  
+                                  { $3 :: $1  }
 
 fdecl:
    typ ID LPAREN formals_opt RPAREN LBRACE stmt_list RBRACE
-     { { typ = $1;
-   fname = $2;
-   formals = $4;
-   body = List.rev $7 } }
+     { {  typ = $1;
+          fname = $2;
+          formals = $4;
+          body = List.rev $7 } }
 
 formals_opt:
-    /* nothing */ { [] }
-  | formal_list   { List.rev $1 }
+    /* nothing */                 { []        }
+  | formal_list                   { List.rev $1 }
 
 formal_list:
-    typ ID                   { [($1,$2)]     }
-  | formal_list COMMA typ ID { ($3,$4) :: $1 }
+    typ ID                        { [($1,$2)]     }
+  | formal_list COMMA typ ID      { ($3,$4) :: $1 }
 
 vdecl:
-	  typ ID SEMI					      { VarDecl($1, $2, Noexpr)	}
-	| typ ID ASSIGN expr SEMI 	{ VarDecl($1, $2, $4)		}
+	  typ ID SEMI					          { VarDecl($1, $2, Noexpr)	}
+	| typ ID ASSIGN expr SEMI 	    { VarDecl($1, $2, $4)		  }
 
 typ:
 	NUM							  { Num 	  }

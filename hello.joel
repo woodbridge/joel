@@ -1,7 +1,7 @@
-table t = (
+table t = <
 			"hello", "world";
 			"testing", "testing";
 			"123", "go!"
-);
+>;
 
 out(t);
