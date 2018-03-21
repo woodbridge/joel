@@ -70,11 +70,7 @@ expr_opt:
   | expr          { $1 }
 
 expr:
-	INT_LIT                 { IntegerLiteral($1)      }
-	| FLOAT_LIT					    { FloatLiteral($1)	      }
-  | STRING_LIT            { StringLiteral($1)       }
-  | TRUE                  { BoolLiteral(true)       }
-  | FALSE                 { BoolLiteral(false)      }
+	 primitives             { $1                      }
   | expr PLUS expr        { Binop($1, Add, $3)      }
   | expr MINUS expr       { Binop($1, Sub, $3)      }
   | expr TIMES expr       { Binop($1, Mult, $3)     }
@@ -103,10 +99,6 @@ expr:
   | ID LPAREN args_opt RPAREN 
                           { Call($1, $3)        }
   | LPAREN expr RPAREN    { $2                      }
-  | LSQBRACE list_literal RSQBRACE 
-                          { ListLiteral(List.rev $2) }
-  | LSQBRACE dict_literal RSQBRACE 
-                          { DictLiteral(List.rev $2) }
   | LPOINTY table_literal RPOINTY 
                           { TableLiteral(List.rev $2) }
 
@@ -145,7 +137,7 @@ fdecl:
           body = List.rev $7 } }
 
 formals_opt:
-    /* nothing */                 { []        }
+    /* nothing */                 { []          }
   | formal_list                   { List.rev $1 }
 
 formal_list:
