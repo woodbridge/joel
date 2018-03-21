@@ -101,6 +101,8 @@ expr:
   | ID TIMESASSIGN expr   { AssignOp($1, Mult, $3)  }
   | ID DIVIDEASSIGN expr  { AssignOp($1, Div, $3)   }
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
+  | ID LPAREN args_opt RPAREN { Call($1, $3)        }
+  | LPAREN expr RPAREN    { $2                      }
   | LSQBRACE list_literal RSQBRACE { ListLiteral(List.rev $2) }
   | LSQBRACE dict_literal RSQBRACE { DictLiteral(List.rev $2) }
   | LPAREN table_literal RPAREN { TableLiteral(List.rev $2) }
@@ -130,19 +132,19 @@ table_literal:
   | table_literal SEMI list_literal  { $3 :: $1 }
 
 fdecl:
-  typ ID LPAREN arg_list_toplevel RPAREN LBRACE stmt_list RBRACE { FuncDecl ($1, $2, List.rev $7, $4) }
+   typ ID LPAREN formals_opt RPAREN LBRACE stmt_list RBRACE
+     { { typ = $1;
+   fname = $2;
+   formals = $4;
+   body = List.rev $7 } }
 
+formals_opt:
+    /* nothing */ { [] }
+  | formal_list   { List.rev $1 }
 
-arg_list_toplevel:
-               { [] }
-  | arg_list   { List.rev $1 }
-
-arg_list:
-    formal          { [$1] }
-  | arg_list COMMA formal { $3 :: $1 }
-
-formal:
-  typ ID { Formal($1, $2) }
+formal_list:
+    typ ID                   { [($1,$2)]     }
+  | formal_list COMMA typ ID { ($3,$4) :: $1 }
 
 vdecl:
 	  typ ID SEMI					      { VarDecl($1, $2, Noexpr)	}
@@ -155,3 +157,11 @@ typ:
   | LIST            { List    }
   | DICT            { Dict    }
   | TABLE           { Table   }
+
+args_opt:
+    /* nothing */ { [] }
+  | args_list  { List.rev $1 }
+
+args_list:
+    expr                    { [$1] }
+  | args_list COMMA expr { $3 :: $1 }

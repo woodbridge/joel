@@ -9,6 +9,8 @@ type pop = Inc | Dec
 
 type typ = Num | String | Bool | List | Dict | Table
 
+type bind = typ * string
+
 type expr =
     IntegerLiteral of int
   | FloatLiteral of string
@@ -23,6 +25,7 @@ type expr =
   | Pop of string * pop
   | Assign of string * expr
   | AssignOp of string * op * expr
+  | Call of string * expr list
   | Noexpr
 
 type var_decl = VarDecl of typ * string * expr
@@ -38,8 +41,12 @@ type stmt =
   | ForEach of typ * expr * expr
   | While of expr * stmt
 
-type formal = Formal of typ * string
-type func_decl = FuncDecl of typ * string * stmt list * formal list
+type func_decl = {
+    typ : typ;
+    fname : string;
+    formals : bind list;
+    body : stmt list;
+  }
 
 type program = func_decl list * stmt list
 

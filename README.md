@@ -6,13 +6,13 @@
 - Josh Learn: jrl2196@columbia.edu 
 - Nadav Gov-Ari: ng2604@columbia.edu
 
-### Testing the parser
+### Testing the parser/scanner
 
 #### To build the toplevel driver:
 - ``ocamlbuild toplevel.native``
 
 #### To run the toplevel driver on an individual file:
-- ``./toplevel.native <testfile>``
+- ``./toplevel.native <testfile.joel>``
 
 #### To run the test suite (Requires python3):
 - ``python3 test.py``
