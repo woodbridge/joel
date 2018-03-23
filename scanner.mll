@@ -55,6 +55,7 @@ rule token = parse
 | "list"   { LIST }
 | "dict"   { DICT }
 | "table"  { TABLE }
+| "void"   { VOID }
 | "true"   { TRUE }
 | "false"  { FALSE }
 | digits as lxm { INT_LIT(int_of_string lxm) }

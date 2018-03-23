@@ -155,6 +155,7 @@ typ:
   | LIST            { List    }
   | DICT            { Dict    }
   | TABLE           { Table   }
+  | VOID            { Void }
 
 args_opt:
     /* nothing */ { [] }

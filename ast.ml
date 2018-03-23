@@ -7,7 +7,7 @@ type uop = Not | Neg
 
 type pop = Inc | Dec
 
-type typ = Num | String | Bool | List | Dict | Table
+type typ = Num | String | Bool | List | Dict | Table | Void
 
 type bind = typ * string
 
