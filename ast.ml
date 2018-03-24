@@ -53,6 +53,8 @@ type program = func_decl list * stmt list
 
 (* Pretty-printing functions *)
 
+let string_of_program (funcs, stmts) = "success"
+
 (* let string_of_op = function
     Add -> "+"
   | Sub -> "-"

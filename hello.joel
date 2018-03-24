@@ -1,7 +1,5 @@
 table t = (
-			"hello", "world";
-			"testing", "testing";
-			"123", "go!"
+			1, 2
 );
 
 out(t);
