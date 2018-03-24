@@ -4,7 +4,7 @@ bool isAwesomeLanguage = true;
 list people = ["Mari", "Justin", "Josh", "Nadav"];
 dict grades = ["Mari":"A+", "Justin":"A+", "Josh":"A+", "Nadav":"A+"];
 dict test = ["Mari":6, "Justin":1, "Josh":9, "Nadav":11];
-table test = ( "hello",	"it's",	"me";
+table test = < "hello",	"it's",	"me";
 							1,				2,			3;
 							"3",			"4",		"5"
-						 );
+						 >;
