@@ -7,7 +7,7 @@ type uop = Not | Neg
 
 type pop = Inc | Dec
 
-type typ = Num | String | Bool | List | Dict | Table
+type typ = Num | String | Bool | List | Dict | Table | Void
 
 type bind = typ * string
 
@@ -55,6 +55,15 @@ type program = func_decl list * stmt list
 
 let string_of_program (funcs, stmts) = "success"
 
+let string_of_typ = function
+    Num -> "num"
+  | String -> "string"
+  | Bool -> "bool"
+  | List -> "list"
+  | Dict -> "dict"
+  | Table -> "table"
+  | Void -> "void"
+
 (* let string_of_op = function
     Add -> "+"
   | Sub -> "-"
@@ -78,13 +87,6 @@ let string_of_uop = function
 let string_of_pop = function
     Inc -> "++"
   | Dec -> "--"
-
-let string_of_typ = function
-    Num -> "num"
-  | String -> "string"
-  | Bool -> "bool"
-  | List -> "list"
-  | Dict -> "dict"
 
 let rec string_of_expr = function
     IntegerLiteral(l) -> string_of_int l
