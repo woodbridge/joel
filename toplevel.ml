@@ -2,6 +2,8 @@
    Scan and parse the input. Does not print the AST - only prints "Success"
    upon successfully parsing the input, or prints the parser error if it fails. *)
 
+(* type action = Ast | Sast | LLVM_IR *) 
+
 let () =
 	let usage_msg = "usage: ./toplevel.native [file.joel]" in
 	let channel = ref stdin in

@@ -102,7 +102,6 @@ expr:
   | ID DIVIDEASSIGN expr  { AssignOp($1, Div, $3)   }
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
   | ID LPAREN args_opt RPAREN { Call($1, $3)        }
-  | LPAREN expr RPAREN    { $2                      }
   | LSQBRACE list_literal RSQBRACE { ListLiteral(List.rev $2) }
   | LSQBRACE dict_literal RSQBRACE { DictLiteral(List.rev $2) }
   | LPAREN table_literal RPAREN { TableLiteral(List.rev $2) }
