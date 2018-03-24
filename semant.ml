@@ -6,32 +6,19 @@ open Sast
 module StringMap = Map.Make(String)
 
 (* Check to see if a variable is in the given symbol table. *)
-let rec find_variable (scope: symbol_table) name = 
-  try 
-    StringMap.find name scope.variables
-  with Not_found -> 
-    match scope parent with
-        Some(parent) -> find_variable parent name
-      | _ -> raise Not_found
 
-let convertToSAST (statements) = 
+let convertToSAST (_, statements) = 
 
-  let symbols = 
-  {
-    variables = StringMap.empty;
-    parent = None;
+  (* Collect function declarations for built-in functions: no bodies *)
+  let built_in_decls = 
+    let add_bind map (name, ty) = StringMap.add name {
+      typ = Void; fname = name; 
+      formals = [(ty, "x")];
+      body = [] } map
+    in List.fold_left add_bind StringMap.empty [ ("out", Table) ]
+  in
 
-  } in
-
-  let functions =
-  {
-    variables = StringMap.empty;
-    parent = None;
-  } in
-
-  let type_of_id s =
-      try StringMap.find s symbols
-      with Not_found -> raise (Failure ("undeclared identifier " ^ s))
+  let function_decls = built_in_decls
   in
 
   (* Return a function from our symbol table *)
@@ -40,36 +27,59 @@ let convertToSAST (statements) =
     with Not_found -> raise (Failure ("unrecognized function " ^ s))
   in
 
-  let rec convert_expr = function
-    StringLiteral s -> (String, SStringLiteral s)
+  (* Raise an exception if the given rvalue type cannot be assigned to
+    the given lvalue type *)
+  let check_assign lvaluet rvaluet err =
+      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+  in
+
+  (* Create a global symbol table *)
+  let globals = StringMap.empty
+  in 
+
+  (* Add a binding to the global symbol table *)
+  let add_bind t id = StringMap.add id t globals
+  in
+
+  (* Return the type of a given id in our symbol table *)
+  let type_of_identifier s =
+      try StringMap.find s globals
+      with Not_found -> raise (Failure ("undeclared identifier " ^ s))
+  in
+
+  let rec expr = function
+    IntegerLiteral i -> (Num, SIntegerLiteral i)
   | TableLiteral rows -> 
     let check_row row = 
-      List.map convert_expr row
+      List.map expr row
     in (Table, STableLiteral(List.map check_row rows)) 
-  | Call(id, args) as call -> 
+  | Call(fname, args) -> 
       let fd = find_func fname in
       let param_length = List.length fd.formals in
       if List.length args != param_length then
         raise (Failure ("expecting " ^ string_of_int param_length ^ 
-                              " arguments in " ^ string_of_expr call))
+                              " arguments in expression"))
       else let check_call (ft, _) e = 
-        let (et, e') = convert_expr e in 
+        let (et, e') = expr e in 
         let err = "illegal argument found " ^ string_of_typ et ^
-          " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
+          " expected " ^ string_of_typ ft ^ " in expression"
         in (check_assign ft et err, e')
       in 
-      let args' = List.map check_call fd.formals args
+      let args' = List.map2 check_call fd.formals args
       in (fd.typ, SCall(fname, args'))
-
-  | Noexpr -> (Void, SNoexpr)
-  | Id s -> (type_of_id s, SId s)
+  | Id s -> (type_of_identifier s, SId s)
+  | _ -> raise (Failure ("Error: Not Yet Implemented"))
 
   in
-  let convert_vardecl (t, id, e) = (t, convert_expr e) (* TODO: Add checking for id *)
+
+  let convert_vardecl = function
+    VarDecl(t, id, e) -> 
+    let _ = add_bind t id in SVarDecl((t, id, expr e))
   in 
 
-  let rec convert_statement = function
-    Expr e -> convert_expr e 
+  let convert_statement = function
+    Expr e -> SExpr(expr e)
   | StmtVDecl v -> SStmtVDecl(convert_vardecl v) (* Returns a SStmtVDecl *)
+  | _ -> raise (Failure ("Error: not yet Implemented"))
   
-  in List.map convert_statement statements
+  in ([], List.map convert_statement statements)
