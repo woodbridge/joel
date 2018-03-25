@@ -7,7 +7,7 @@ open Sast
 
 module StringMap = Map.Make(String)
 
-let do_nothing (_, statements) =
+let hello (_, statements) =
   let context    = L.global_context () in
 
   let i32_t  = L.i32_type    context
@@ -93,7 +93,7 @@ let do_nothing (_, statements) =
           STableLiteral _ -> L.const_int i32_t 0   (* temporary    *)
         | SIntegerLiteral i -> L.const_int i32_t i
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
-        | SCall ("printf", [e]) -> print_string e 
+        | SCall ("out", [e]) -> print_string e 
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
       in
 

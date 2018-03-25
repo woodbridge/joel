@@ -15,7 +15,7 @@ let convertToSAST (_, statements) =
       typ = Void; fname = name; 
       formals = [(ty, "x")];
       body = [] } map
-    in List.fold_left add_bind StringMap.empty [ ("printf", Table) ]
+    in List.fold_left add_bind StringMap.empty [ ("out", Table) ]
   in
 
   let function_decls = built_in_decls
