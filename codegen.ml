@@ -41,8 +41,14 @@ let do_nothing (_, statements) =
       | None -> ignore (f builder)
   in
 
-  let string_repr (_, e) = match e with
-    SIntegerLiteral i -> string_of_int i
+  (* Gets the string representation of a primitive type *)
+  let rec string_repr (_, e) = match e with
+     SIntegerLiteral i -> string_of_int i
+    | STableLiteral rows ->
+      let string_of_row row =
+        "\t" ^ String.concat ", " (List.map string_repr (List.rev row)) ^ ";\n"
+        in
+          "(\n" ^ String.concat "\n" (List.map string_of_row rows) ^ ")"
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
 
   in
@@ -73,18 +79,12 @@ let do_nothing (_, statements) =
       in*)
 
 
-      (* stringify a semantically-checked expression so we can print it out *)
-      let stringify e = let (_, sx) = e in
+      (* Generates code to print out a sexpr *)
+      let print_string e = let (_, sx) = e in
         match sx with
-          STableLiteral rows ->
-            let pp rows = 
-              let string_of_row row = 
-                  "\t" ^ String.concat ", " (List.map string_repr (List.rev row)) ^ ";\n"
-                in
-                  "(\n" ^ String.concat "\n" (List.map string_of_row rows) ^ ")"
-              in 
-                let string_repr = pp rows in 
-                  L.build_call printf_func [| str_format_str ; (L.build_global_stringptr string_repr "string" builder) |] "printf" builder
+          STableLiteral _ -> 
+            let tab_string = string_repr e in
+              L.build_call printf_func [| str_format_str ; (L.build_global_stringptr tab_string "string" builder) |] "printf" builder
           | _ -> raise (Failure ("Error: Not Yet Implemented"))
       in
 
@@ -93,7 +93,7 @@ let do_nothing (_, statements) =
           STableLiteral _ -> L.const_int i32_t 0   (* temporary    *)
         | SIntegerLiteral i -> L.const_int i32_t i
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
-        | SCall ("printf", [e]) -> stringify e 
+        | SCall ("printf", [e]) -> print_string e 
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
       in
 
