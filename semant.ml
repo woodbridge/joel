@@ -15,7 +15,7 @@ let convertToSAST (_, statements) =
       typ = Void; fname = name; 
       formals = [(ty, "x")];
       body = [] } map
-    in List.fold_left add_bind StringMap.empty [ ("out", Table) ]
+    in List.fold_left add_bind StringMap.empty [ ("printf", Table) ]
   in
 
   let function_decls = built_in_decls
@@ -49,6 +49,7 @@ let convertToSAST (_, statements) =
 
   let rec expr = function
     IntegerLiteral i -> (Num, SIntegerLiteral i)
+  | StringLiteral s -> (String, SStringLiteral s)
   | TableLiteral rows -> 
     let check_row row = 
       List.map expr row

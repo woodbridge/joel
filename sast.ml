@@ -6,6 +6,7 @@ type sexpr = typ * sx
 and sx =
     SIntegerLiteral of int
   | STableLiteral of (sexpr list) list
+  | SStringLiteral of string
   | SId of string
   | SCall of string * sexpr list
 
