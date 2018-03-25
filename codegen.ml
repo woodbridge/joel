@@ -46,9 +46,9 @@ let hello (_, statements) =
      SIntegerLiteral i -> string_of_int i
     | STableLiteral rows ->
       let string_of_row row =
-        "\t" ^ String.concat ", " (List.map string_repr (List.rev row)) ^ ";\n"
+        "\t" ^ String.concat ", " (List.map string_repr (List.rev row))
         in
-          "(\n" ^ String.concat "\n" (List.map string_of_row rows) ^ ")"
+          "(\n" ^ String.concat ";\n" (List.map string_of_row rows) ^ "\n)"
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
 
   in
