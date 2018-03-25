@@ -15,11 +15,12 @@ let do_nothing (_, statements) =
   in
   
   (*  Map JOEL types to LLVM types *)
-  let ltype_of_typ = function
+  (*let ltype_of_typ = function
     (* assume tables are only of numbers... and now i'm realizing why matrix is what u do. *)
       A.Table -> L.pointer_type(i32_t)
     | A.Num -> i32_t
-  in
+    | _ -> raise (Failure ("Error: Not Yet Implemented"))
+  in*)
 
   (* Create an LLVM module -- this is a "container" into which we'll 
      generate actual code *)
@@ -40,8 +41,9 @@ let do_nothing (_, statements) =
       | None -> ignore (f builder)
   in
 
-  let string_repr (t, e) = match e with
+  let string_repr (_, e) = match e with
     SIntegerLiteral i -> string_of_int i
+    | _ -> raise (Failure ("Error: Not Yet Implemented"))
 
   in
 
@@ -60,42 +62,45 @@ let do_nothing (_, statements) =
 
   let build_program_body statements =
     let builder = L.builder_at_end context (L.entry_block the_function) in
-      let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
-      and str_format_str  = L.build_global_stringptr "%s\n" "fmt" builder 
+      (*let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder*)
+      let str_format_str  = L.build_global_stringptr "%s\n" "fmt" builder 
       in
 
-      let add_local m (t, n) =
+      (*let add_local m (t, n) =
         let local_var = L.build_alloca (ltype_of_typ t) n builder
           in StringMap.add n local_var m
 
+      in*)
+
+
+      (* stringify a semantically-checked expression so we can print it out *)
+      let stringify e = let (_, sx) = e in
+        match sx with
+          STableLiteral rows ->
+            let pp rows = 
+              let string_of_row row = 
+                  "\t" ^ String.concat ", " (List.map string_repr (List.rev row)) ^ ";\n"
+                in
+                  "(\n" ^ String.concat "\n" (List.map string_of_row rows) ^ ")"
+              in 
+                let string_repr = pp rows in 
+                  L.build_call printf_func [| str_format_str ; (L.build_global_stringptr string_repr "string" builder) |] "printf" builder
+          | _ -> raise (Failure ("Error: Not Yet Implemented"))
       in
 
       (* expression builder *)
-      let rec expr builder (_, e) = match e with
-          STableLiteral t -> L.const_int i32_t 0   (* temporary    *)
+      let expr builder (_, e) = match e with
+          STableLiteral _ -> L.const_int i32_t 0   (* temporary    *)
         | SIntegerLiteral i -> L.const_int i32_t i
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
-        | SCall ("printf", [e]) ->
-          let (_, sx) = e in
-            match sx with
-              STableLiteral rows ->
-                let pp rows =
-                  let string_of_row row = 
-                    "\t" ^ String.concat ", " (List.map string_repr (List.rev row)) ^ ";\n"
-                  in
-                    "(\n" ^ String.concat "\n" (List.map string_of_row rows) ^ ")"
-                in 
-                  let string_repr = pp rows in 
-                    L.build_call printf_func [| str_format_str ; (L.build_global_stringptr string_repr "string" builder) |] "printf" builder
-
+        | SCall ("printf", [e]) -> stringify e 
+        | _ -> raise (Failure ("Error: Not Yet Implemented"))
       in
 
       (* statement builder *)
-      let rec build_statement stmt =
-        let hack = match stmt with
-          SExpr e -> (ignore(expr builder e))
-        in 
-          ()
+      let build_statement = function
+           SExpr e -> (ignore(expr builder e))
+          | _ -> raise (Failure ("Error: Not Yet Implemented"))
 
       in
         List.iter build_statement statements; make_return builder; ()
