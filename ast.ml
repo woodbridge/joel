@@ -53,7 +53,7 @@ type program = func_decl list * stmt list
 
 (* Pretty-printing functions *)
 
-let string_of_program (funcs, stmts) = "success"
+let string_of_program (_, _) = "success"
 
 let string_of_typ = function
     Num -> "num"

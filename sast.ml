@@ -44,8 +44,9 @@ let rec string_of_sexpr (t, e) =
   | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e*)
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
-  (*| SNoexpr -> ""*)
-          ) ^ ")"  
+  (*| SNoexpr -> ""*)  
+    | _ -> "unknown"
+  ) ^ ")"
 
 let string_of_sstmt = function
     SExpr(expr) -> string_of_sexpr expr ^ ";\n";

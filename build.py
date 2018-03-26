@@ -2,16 +2,16 @@ import subprocess
 import os
 
 # MAIN
-run = subprocess.run(['ocamlbuild', '-use-ocamlfind', '-pkgs', 'llvm,llvm.analysis', '-cflags', '-w,+a-4', 'toplevel.native'],
-	stdout=subprocess.PIPE, stderr = subprocess.PIPE)
 
-out = run.stdout.decode('utf-8')
-err = run.stderr.decode('utf-8')
+try:
+  run = subprocess.run(['ocamlbuild', '-use-ocamlfind', '-pkgs', 'llvm,llvm.analysis', '-cflags', '-w,+a-4', 'toplevel.native'],
+  	stdout=subprocess.PIPE, stderr = subprocess.PIPE, check=True)
+  print('SUCCESSFULLY BUILT COMPILER')
+except subprocess.CalledProcessError as e:
+  print("FAILED TO BUILD COMPILER")
 
-if len(out) == 0 and len(err) == 0:
-	print("SUCCESSFULLY BUILT COMPILER")
-else:
-	print("FAIL")
-	print(out)
-	print(err)
+  stderr = e.stderr.decode().split('\n')
+  for line in stderr: print(line)
 
+  stdout =  e.stdout.decode().split('\n')
+  for line in stdout: print(line)
