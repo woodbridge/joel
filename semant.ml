@@ -40,6 +40,10 @@ let convertToSAST (statements) =
     with Not_found -> raise (Failure ("unrecognized function " ^ s))
   in
 
+  let check_assign lvaluet rvaluet err =
+     if lvaluet = rvaluet then lvaluet else raise (Failure err)
+  in
+
   let rec convert_expr = function
     StringLiteral s -> (String, SStringLiteral s)
   | IntegerLiteral s -> (Num, SIntegerLiteral s)
@@ -81,7 +85,16 @@ let convertToSAST (statements) =
                    " in " ^ string_of_expr ex) *)
         )
       in (ty, SUnop(op, (t, e')))
-  | Call(id, args) as call ->
+  | Pop(id, op) as e ->
+    let t = type_of_id id in
+    let ty = match op with
+        Inc when t = Num -> Num
+      | Dec when t = Num -> Num
+      | _ -> raise (
+          Failure("illegal use of pop operator.")
+        )
+    in (ty, Pop(id, op))
+  | Call(fname, args) as call ->
       let fd = find_func fname in
       let param_length = List.length fd.formals in
       if List.length args != param_length then
@@ -95,7 +108,24 @@ let convertToSAST (statements) =
       in
       let args' = List.map check_call fd.formals args
       in (fd.typ, SCall(fname, args'))
-
+  | Assign(id, e) as ex ->
+      let lt = type_of_id id
+      and (rt, e') = expr e in
+      let err = "illegal assignment."
+      (* let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
+        string_of_typ rt ^ " in " ^ string_of_expr ex *)
+      in (check_assign lt rt err, SAssign(var, (rt, e')))
+  | AssignOp(id, op, e) as ex ->
+      let lt = type_of_id id
+      and (rt, e') = expr e in
+      (* let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
+        string_of_typ rt ^ " in " ^ string_of_expr ex *)
+      let same_type = lt = rt in
+      let ty = match op with
+          Add | Sub | Mult | Div | Mod when same_type && lt = Num -> Num
+        | Add when same && lt = String -> String
+        | _ -> raise (Failure("illegal assignment."))
+        in (ty, SAssign(var, (rt, e')))
   | Noexpr -> (Void, SNoexpr)
   | Id s -> (type_of_id s, SId s)
 
