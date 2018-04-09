@@ -1,4 +1,4 @@
-(* Semantic checking for the MicroC compiler *)
+(* Semantic checking for the Joel compiler *)
 
 open Ast
 open Sast
@@ -14,15 +14,15 @@ let rec find_variable (scope: symbol_table) name =
         Some(parent) -> find_variable parent name
       | _ -> raise Not_found
 
-let convertToSAST (statements) =
+let convertToSAST (statements, funcs) =
 
-  let symbols =
+(*   let symbols =
   {
     variables = StringMap.empty;
     parent = None;
 
   }
-
+ *)
   let functions =
   {
     variables = StringMap.empty;
@@ -130,11 +130,80 @@ let convertToSAST (statements) =
   | Id s -> (type_of_id s, SId s)
 
   in
-  let convert_vardecl (t, id, e) = (t, convert_expr e) (* TODO: Add checking for id *)
+  let convert_vardecl (t, id, e) = (t, id, convert_expr e) (* TODO: Add checking for id *)
+  in
+
+  let check_bool_expr e = 
+    let (t', e') = convert_expr e
+    and err = "expected Boolean expression."
+    in if t' != Bool then raise (Failure err) else (t', e') 
   in
 
   let rec convert_statement = function
     Expr e -> convert_expr e
   | StmtVDecl v -> SStmtVDecl(convert_vardecl v) (* Returns a SStmtVDecl *)
+  | Block sl ->
+      let rec convert_statement_list = function
+          [Return _ as s] -> [convert_statement s]
+        | Return _ :: _   -> raise (Failure "nothing may follow a return")
+        | Block sl :: ss  -> convert_statement (sl @ ss) (* Flatten blocks *)
+        | s :: ss         -> convert_statement s :: convert_statement_list ss
+        | []              -> []
+      in SBlock(convert_statement_list sl)
+  | If(p, b1, b2) -> SIf(check_bool_expr p, convert_statement b1, convert_statement b2)
+  | For(e1, e2, e3, st) ->
+    SFor(convert_expr e1, check_bool_expr e2, convert_expr e3, convert_statement st)
+  | ForDecl(e1, e2, e3, st) ->
+    SForDecl(convert_vardecl e1, check_bool_expr e2, convert_expr e3, convert_statement st)
+  | ForEach(t, e1, e2) ->
+    SForEach(t, convert_expr e1, convert_expr e2)
+  | While(e, st) ->
+    SWhile(convert_expr e, convert_statement st)
+  in
 
-  in List.map convert_statement statements
+  let statements' = List.map convert_statement statements in 
+
+  let rec convert_func func = 
+
+    let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+                  StringMap.empty formals
+    in
+
+    let rec convert_func_statement = function
+      Expr e -> convert_expr e
+    | StmtVDecl v -> SStmtVDecl(convert_vardecl v) (* Returns a SStmtVDecl *)
+    | Block sl ->
+        let rec convert_statement_list = function
+            [Return _ as s] -> [convert_statement s]
+          | Return _ :: _   -> raise (Failure "nothing may follow a return")
+          | Block sl :: ss  -> convert_statement (sl @ ss) (* Flatten blocks *)
+          | s :: ss         -> convert_statement s :: convert_statement_list ss
+          | []              -> []
+        in SBlock(convert_statement_list sl)
+    | If(p, b1, b2) -> SIf(check_bool_expr p, convert_statement b1, convert_statement b2)
+    | For(e1, e2, e3, st) ->
+      SFor(convert_expr e1, check_bool_expr e2, convert_expr e3, convert_statement st)
+    | ForDecl(e1, e2, e3, st) ->
+      SForDecl(convert_vardecl e1, check_bool_expr e2, convert_expr e3, convert_statement st)
+    | ForEach(t, e1, e2) ->
+      SForEach(t, convert_expr e1, convert_expr e2)
+    | While(e, st) ->
+      SWhile(convert_expr e, convert_statement st)
+    | Return e -> let (t, e') = expr e in
+      if t = func.typ then SReturn (t, e') 
+      else raise (
+        Failure("Function expects different return type.")
+      (*Failure ("return gives " ^ string_of_typ t ^ " expected " ^
+         string_of_typ func.typ ^ " in " ^ string_of_expr e) *)      
+      )
+      
+    in
+    { styp = func.typ;
+      sfname = func.fname;
+      sformals = formals;
+      sbody = match convert_func_statement (Block func.body) with
+          SBlock(sl) -> sl
+        | _ -> let err = "internal error: block didn't become a block?"
+      in raise (Failure err)
+    }
+  in (statements', List.map convert_func funcs)
