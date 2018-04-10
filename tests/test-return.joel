@@ -1,3 +1,4 @@
 if(10) {
+  print("hello!");
   return 10;
 }

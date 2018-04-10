@@ -1,2 +1,4 @@
 /* this is a comment */
 num gradeOnThisProject = 100;
+
+print(gradeOnThisProject);

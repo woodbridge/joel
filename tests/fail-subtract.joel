@@ -1,1 +1,2 @@
-num badResult = a - ;
+string hello = "hello";
+num badResult = hello - 1;

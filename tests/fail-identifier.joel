@@ -1,2 +1,1 @@
-num grade100 = 100;
-num 100grade = 100;
+num grade = myGrade;

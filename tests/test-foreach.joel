@@ -1,3 +1,6 @@
+list ages = [1, 2, 3, 4, 5];
+num total = 0;
+
 foreach(num age in ages) {
-  num name = 10;
+  total += 10;
 }

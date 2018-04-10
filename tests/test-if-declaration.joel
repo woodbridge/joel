@@ -1,3 +1,7 @@
+bool truth = false;
+
 if(true) {
-  bool truth = true;  
+  truth = true;  
 }
+
+print(truth);
