@@ -9,22 +9,38 @@ type symbol_table = {
 
 type sexpr = typ * sx
 and sx =
-    SStringLiteral of string
+    SIntegerLiteral of int
+  | SFloatLiteral of string
+  | SStringLiteral of string
+  | SBoolLiteral of bool
+  | SListLiteral of sexpr list
+  | SDictLiteral of (sexpr * sexpr) list
   | STableLiteral of (sexpr list) list
   | SId of string
+  | SBinop of sexpr * op * sexpr
+  | SUnop of uop * sexpr
+  | SPop of string * pop
   | SAssign of string * sexpr
+  | SAssignOp of string * op * sexpr
   | SCall of string * sexpr list
   | SNoexpr
 
 type svar_decl = SVarDecl of typ * string * sexpr
 
 type sstmt =
+    SBlock of sstmt list
   | SExpr of sexpr
   | SStmtVDecl of svar_decl
+  | SReturn of sexpr
+  | SIf of sexpr * sstmt * sstmt
+  | SFor of sexpr * sexpr * sexpr * sstmt
+  | SForDecl of svar_decl * sexpr * sexpr * sstmt
+  | SForEach of typ * sexpr * sexpr
+  | SWhile of sexpr * sstmt
 
 type sprogram = sstmt list
 
-(* Pretty-printing functions 
+(* Pretty-printing functions
 
 let rec string_of_sexpr (t, e) =
   "(" ^ string_of_typ t ^ " : " ^ (match e with
@@ -40,7 +56,7 @@ let rec string_of_sexpr (t, e) =
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""
-				  ) ^ ")"				     
+				  ) ^ ")"
 
 let rec string_of_sstmt = function
     SBlock(stmts) ->
