@@ -33,11 +33,11 @@ type var_decl = VarDecl of typ * string * expr
 type stmt =
     Block of stmt list
   | Expr of expr
-  | StmtVDecl of var_decl
+  | StmtVDecl of typ * string * expr
   | Return of expr
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
-  | ForDecl of var_decl * expr * expr * stmt
+  | ForDecl of typ * string * expr * expr * expr * stmt
   | ForEach of typ * expr * expr
   | While of expr * stmt
 

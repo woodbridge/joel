@@ -2,8 +2,10 @@
 
 open Ast
 
+module StringMap = Map.Make(String)
+
 type symbol_table = {
-  variables: ty StringMap.t; (* Variables bound in current block *)
+  variables: typ StringMap.t; (* Variables bound in current block *)
   parent: symbol_table option; (* Enclosing scope *)
 }
 
@@ -30,13 +32,20 @@ type svar_decl = SVarDecl of typ * string * sexpr
 type sstmt =
     SBlock of sstmt list
   | SExpr of sexpr
-  | SStmtVDecl of svar_decl
+  | SStmtVDecl of typ * string * sexpr
   | SReturn of sexpr
   | SIf of sexpr * sstmt * sstmt
   | SFor of sexpr * sexpr * sexpr * sstmt
-  | SForDecl of svar_decl * sexpr * sexpr * sstmt
+  | SForDecl of typ * string * sexpr * sexpr * sexpr * sstmt
   | SForEach of typ * sexpr * sexpr
   | SWhile of sexpr * sstmt
+
+type sfunc_decl = {
+    styp : typ;
+    sfname : string;
+    sformals : bind list;
+    sbody : sstmt list;
+  }
 
 type sprogram = sstmt list
 
