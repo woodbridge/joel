@@ -50,7 +50,7 @@ stmt_list:
 
 stmt:
   	expr SEMI 					                    { Expr $1	}
-  | vdecl                                   { StmtVDecl $1 }
+  | vdecl                                   { $1 }
   | RETURN expr_opt SEMI                    { Return $2             }
   | LBRACE stmt_list RBRACE                 { Block(List.rev $2)    }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
@@ -58,8 +58,8 @@ stmt:
   | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
                                             { For($3, $5, $7, $9)   }
 
-  | FOR LPAREN vdecl expr SEMI expr_opt RPAREN stmt
-                                            { ForDecl($3, $4, $6, $8)   }
+  | FOR LPAREN typ ID ASSIGN expr SEMI expr SEMI expr_opt RPAREN stmt
+                                            { ForDecl($3, $4, $6, $8, $10, $12)   }
 
   | FOREACH LPAREN typ expr IN expr RPAREN stmt
                                             { ForEach($3, $4, $6)  }
@@ -145,8 +145,8 @@ formal_list:
   | formal_list COMMA typ ID      { ($3,$4) :: $1 }
 
 vdecl:
-	  typ ID SEMI					          { VarDecl($1, $2, Noexpr)	}
-	| typ ID ASSIGN expr SEMI 	    { VarDecl($1, $2, $4)		  }
+	  typ ID SEMI					          { StmtVDecl($1, $2, Noexpr)	}
+	| typ ID ASSIGN expr SEMI 	    { StmtVDecl($1, $2, $4)		  }
 
 typ:
 	NUM							  { Num 	  }

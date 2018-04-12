@@ -28,7 +28,7 @@ type expr =
   | Call of string * expr list
   | Noexpr
 
-type var_decl = VarDecl of typ * string * expr
+(* type var_decl = VarDecl of typ * string * expr *)
 
 type stmt =
     Block of stmt list
