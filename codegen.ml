@@ -77,6 +77,19 @@ let trans (functions, statements) =
       let rec expr builder (_, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
+        | SBinop (e1, op, e2) ->
+         let (t, _) = e1
+         and e1' = expr builder e1
+         and e2' = expr builder e2 in
+         if t = A.Num then (match op with
+          A.Add     -> L.build_fadd
+          | A.Sub     -> L.build_fsub
+          | A.Mult    -> L.build_fmul
+          | A.Div     -> L.build_fdiv 
+          | _ -> raise (Failure ("Error: Not Yet Implemented"))
+          ) e1' e2' "tmp" builder
+       else raise (Failure ("Error: Not Yet Implemented"))
+       
         | SCall ("printf", [e]) -> 
           L.build_call printf_func [| float_format_str ; (expr builder e) |]
           "printf" builder
