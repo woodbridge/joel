@@ -21,7 +21,7 @@ let check (functions, statements) =
       formals = [(ty, "x")];
       body = [] } map
     (* need a list of built in functions to put here  *)
-    in List.fold_left add_bind StringMap.empty []
+    in List.fold_left add_bind StringMap.empty [ ("printf", Num) ]
       (* [ ("print", Int);
 			                         ("printb", Bool);
 			                         ("printf", Float);

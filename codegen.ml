@@ -25,6 +25,7 @@ let trans (functions, statements) =
   let context    = L.global_context () in
   (* Add types to the context so we can use them in our LLVM code *)
   let num_t      = L.double_type  context (* num type *)
+  and i32_t      = L.i32_type     context (* int type (for returns) *)
   and i8_t       = L.i8_type      context (* pointer type *)
   and bool_t       = L.i1_type    context (* boolean type *)
   and void_t     = L.void_type    context (* void type *)
@@ -43,7 +44,7 @@ let trans (functions, statements) =
   let printf_func = L.declare_function "printf" printf_t the_module in
 
   (* Build a "main" function to enclose all statements in the program *)
-  let main_ty = L.function_type num_t [||] in
+  let main_ty = L.function_type i32_t [||] in
   let the_function = L.define_function "main" main_ty the_module in
 
   let add_terminal builder f =
@@ -54,7 +55,7 @@ let trans (functions, statements) =
   in
 
   let make_return builder =
-    let t = L.build_ret (L.const_float num_t 0.0) in 
+    let t = L.build_ret (L.const_int i32_t 0) in 
       add_terminal builder t
   in 
 
