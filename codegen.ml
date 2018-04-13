@@ -35,6 +35,7 @@ let trans (functions, statements) =
   (* Convert Joel types to LLVM types *)
   let ltype_of_typ = function
       A.Num   -> num_t
+    | A.Bool  -> bool_t
     | A.Void  -> void_t
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
@@ -62,37 +63,43 @@ let trans (functions, statements) =
   let build_program_body statements =
     let builder = L.builder_at_end context (L.entry_block the_function) in
       let str_format_str  = L.build_global_stringptr "%s\n" "fmt" builder 
+      and int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
       and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
       in
 
-      (* Generates code to print out a sexpr *)
+      (* Generates code to print out a sexpr 
       let print_string e = let (_, sx) = e in
         match sx with
             SIntegerLiteral i -> string_of_int i
           | SFloatLiteral f -> f
           | _ -> raise (Failure ("Error: Not Yet Implemented"))
-      in
+      in *)
 
       (* expression builder *)
       let rec expr builder (_, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
+        | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
          and e1' = expr builder e1
          and e2' = expr builder e2 in
          if t = A.Num then (match op with
-          A.Add     -> L.build_fadd
+          A.Add     -> L.build_fadd 
           | A.Sub     -> L.build_fsub
-          | A.Mult    -> L.build_fmul
-          | A.Div     -> L.build_fdiv 
+          | A.Mult    -> L.build_fmul 
+          | A.Div     -> L.build_fdiv  (* Todo: modulo *)
+          | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
           | _ -> raise (Failure ("Error: Not Yet Implemented"))
-          ) e1' e2' "tmp" builder
-       else raise (Failure ("Error: Not Yet Implemented"))
-       
-        | SCall ("printf", [e]) -> 
-          L.build_call printf_func [| float_format_str ; (expr builder e) |]
-          "printf" builder
+           ) e1' e2' "tmp" builder
+          else raise (Failure ("Error: Not Yet Implemented"))
+
+        | SCall ("printf", [e]) -> let (t, _) = e in
+         ( match t with
+           | A.Num -> L.build_call printf_func [| float_format_str ; (expr builder e) |]
+           | A.Bool -> L.build_call printf_func [| int_format_str ; (expr builder e) |]
+           | _ -> raise (Failure ("Error: Not Yet Implemented"))
+         ) "printf" builder
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
       in
 

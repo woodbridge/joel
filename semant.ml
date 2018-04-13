@@ -1,4 +1,5 @@
 (* Semantic checking for the MicroC compiler *)
+(* TODO: Does modulo reject if one or both operands are not integers? *)
 
 open Ast
 open Sast
@@ -21,7 +22,8 @@ let check (functions, statements) =
       formals = [(ty, "x")];
       body = [] } map
     (* need a list of built in functions to put here  *)
-    in List.fold_left add_bind StringMap.empty [ ("printf", Num) ]
+    in List.fold_left add_bind StringMap.empty [ ("printf", Num);
+                                                  ("printf", Bool) ]
       (* [ ("print", Int);
 			                         ("printb", Bool);
 			                         ("printf", Float);
