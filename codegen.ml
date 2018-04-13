@@ -97,7 +97,16 @@ let trans (functions, statements) =
           | A.Geq     -> L.build_fcmp L.Fcmp.Oge
           | _ -> raise (Failure ("Error: Not Yet Implemented"))
            ) e1' e2' "tmp" builder
-          else raise (Failure ("Error: Not Yet Implemented"))
+         else (match op with
+            A.And -> L.build_and
+          | A.Or      -> L.build_or
+          | A.Equal   -> L.build_icmp L.Icmp.Eq
+          | A.Neq     -> L.build_icmp L.Icmp.Ne
+          | A.Less    -> L.build_icmp L.Icmp.Slt
+          | A.Leq     -> L.build_icmp L.Icmp.Sle
+          | A.Greater -> L.build_icmp L.Icmp.Sgt
+          | A.Geq     -> L.build_icmp L.Icmp.Sge
+           ) e1' e2' "tmp" builder
 
         | SCall ("printf", [e]) -> let (t, _) = e in
          ( match t with
