@@ -90,6 +90,11 @@ let trans (functions, statements) =
           | A.Mult    -> L.build_fmul 
           | A.Div     -> L.build_fdiv  (* Todo: modulo *)
           | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+          | A.Neq     -> L.build_fcmp L.Fcmp.One
+          | A.Less    -> L.build_fcmp L.Fcmp.Olt
+          | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+          | A.Greater -> L.build_fcmp L.Fcmp.Ogt
+          | A.Geq     -> L.build_fcmp L.Fcmp.Oge
           | _ -> raise (Failure ("Error: Not Yet Implemented"))
            ) e1' e2' "tmp" builder
           else raise (Failure ("Error: Not Yet Implemented"))
