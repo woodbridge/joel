@@ -99,7 +99,7 @@ expr:
   | ID LPAREN args_opt RPAREN 
                           { Call($1, $3)        }
   | LPAREN expr RPAREN    { $2                      }
-  | LPOINTY table_literal RPOINTY 
+  | LT table_literal GT 
                           { TableLiteral(List.rev $2) }
 
 primitives:
