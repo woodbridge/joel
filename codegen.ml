@@ -116,11 +116,11 @@ let trans (functions, statements) =
         | SAssign (n, e) -> update_variable scope n e; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
         | SAssignOp (n, op, e) -> expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), op, e)))) (* expand expression - i.e. a += 1 becomes a = a + 1 *)
         | SPop (n, pop) -> let prev = expr builder scope (t, SId(n)) in (* expand expression - i.e. a++ becomes a = a + 1, and we return a's prev. value *)
-          expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), (
+          ignore(expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), (
             match pop with 
               A.Inc -> A.Add
             | A.Dec -> A.Sub
-          ), (t, SIntegerLiteral(1)))))); prev
+          ), (t, SIntegerLiteral(1))))))); prev
 
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
@@ -187,7 +187,7 @@ let trans (functions, statements) =
         }
       with Not_found -> (* If variable is not in this scope, check the parent scope *)
         match !scope.parent with
-            Some(parent) -> find_variable (ref parent) name; ()
+            Some(parent) -> ignore(find_variable (ref parent) name); ()
           | _ -> raise Not_found
       in
 
