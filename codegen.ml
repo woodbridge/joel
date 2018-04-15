@@ -65,18 +65,20 @@ let trans (functions, statements) =
   let main_ty = L.function_type i32_t [||] in
   let the_function = L.define_function "main" main_ty the_module in
 
+  (* Add a terminator instruction f to wherever builder is located. *)
   let add_terminal builder f =
-    (* The current block where we're inserting instr *)
     match L.block_terminator (L.insertion_block builder) with
        Some _ -> ()
       | None -> ignore (f builder)
   in
 
+  (* Add a "return 0" statement to the end of a function (used to terminate the main function) *)
   let make_return builder =
     let t = L.build_ret (L.const_int i32_t 0) in 
       add_terminal builder t
   in 
 
+  (* Iterate through the list of semantically-checked statements, generating code for each one. *)
   let build_program_body statements =
     let builder = L.builder_at_end context (L.entry_block the_function) in
       let str_format_str  = L.build_global_stringptr "%s\n" "fmt" builder 
@@ -119,6 +121,7 @@ let trans (functions, statements) =
               A.Inc -> A.Add
             | A.Dec -> A.Sub
           ), (t, SIntegerLiteral(1)))))); prev
+
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
          and e1' = expr builder scope e1
@@ -182,13 +185,13 @@ let trans (functions, statements) =
           names = StringMap.add name l_var !scope.names;
           parent = !scope.parent;
         }
-      with Not_found ->
+      with Not_found -> (* If variable is not in this scope, check the parent scope *)
         match !scope.parent with
             Some(parent) -> find_variable (ref parent) name; ()
           | _ -> raise Not_found
       in
 
-      (* statement builder *)
+      (* Build a single statement. Should return a unit value. *)
       let build_statement scope stmt = match stmt with
             SExpr e -> (ignore(expr builder scope e))
           | SStmtVDecl(t, n, e) -> (ignore(add_variable scope t n e))
