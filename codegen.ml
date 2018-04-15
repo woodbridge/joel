@@ -57,7 +57,6 @@ let trans (functions, statements) =
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
 
-
   (* Declare the printf builtin function *)
   let printf_t = L.var_arg_function_type num_t [| L.pointer_type i8_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
@@ -112,7 +111,7 @@ let trans (functions, statements) =
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
         | SId id -> L.build_load (find_variable scope id) id builder
-        | SAssign (n, e) -> add_local scope t n e; find_variable scope n
+        | SAssign (n, e) -> update_variable scope n e; find_variable scope n
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
          and e1' = expr builder scope e1
@@ -149,7 +148,7 @@ let trans (functions, statements) =
       (* Construct code for a variable assigned in the given scope. 
         Allocate on the stack, initialize its value, if appropriate, 
         and mutate the given map to remember its value. *)
-      and add_local (scope: var_table ref) t n e = 
+      and add_variable (scope: var_table ref) t n e = 
         let e' = let (_, ex) = e in match ex with
             SNoexpr -> get_init_noexpr t
           | _ -> expr builder scope e
@@ -161,12 +160,31 @@ let trans (functions, statements) =
           parent = !scope.parent;
         }
 
+      (* Update a variable, beginning in the given scope.
+        Bind the nearest occurrence of the variable to the given
+        new value, and mutate the given map to remember its value. *)
+      and update_variable (scope: var_table ref) name e =
+      try ignore(StringMap.find name !scope.names);
+      let e' = let (t, ex) = e in match ex with
+            SNoexpr -> get_init_noexpr t
+          | _ -> expr builder scope e
+        in L.set_value_name name e';
+        let (t, _) = e in let l_var = L.build_alloca (ltype_of_typ t) name builder in
+        ignore (L.build_store e' l_var builder);
+        scope := {
+          names = StringMap.add name l_var !scope.names;
+          parent = !scope.parent;
+        }
+      with Not_found ->
+        match !scope.parent with
+            Some(parent) -> find_variable (ref parent) name; ()
+          | _ -> raise Not_found
       in
 
       (* statement builder *)
       let build_statement scope stmt = match stmt with
             SExpr e -> (ignore(expr builder scope e))
-          | SStmtVDecl(t, n, e) -> (ignore(add_local scope t n e))
+          | SStmtVDecl(t, n, e) -> (ignore(add_variable scope t n e))
           | _ -> raise (Failure ("Error: Not Yet Implemented"))
       in
         List.iter (fun stmt -> build_statement global_scope stmt) statements; make_return builder; ()
