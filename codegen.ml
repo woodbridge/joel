@@ -19,6 +19,7 @@ open Sast
 
 module StringMap = Map.Make(String)
 
+(* Data structure to represent the current scope and its parent. *)
 type var_table = {
   names: L.llvalue StringMap.t; (* Names bound in current block *)
   parent: var_table option; (* Enclosing scope *)
@@ -29,13 +30,15 @@ type var_table = {
 let trans (functions, statements) =
 
   let context    = L.global_context () in
+
   (* Add types to the context so we can use them in our LLVM code *)
   let num_t      = L.double_type  context (* num type *)
   and i32_t      = L.i32_type     context (* int type (for returns) *)
   and i8_t       = L.i8_type      context (* pointer type *)
   and bool_t       = L.i1_type    context (* boolean type *)
   and void_t     = L.void_type    context (* void type *)
-  (* Create an LLVM module - a container for the code *)
+
+  (* Create an LLVM module - a container for our code *)
   and the_module = L.create_module context "Joel" in
 
   (* Convert Joel types to LLVM types *)
@@ -46,6 +49,8 @@ let trans (functions, statements) =
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
 
+  (* If a variable is declared but not assigned a value, give it a placeholder value
+    according to its type so we can store it in the symbol table. *)
   let get_init_noexpr = function
       A.Num -> L.const_float num_t 0.0
     | A.Bool -> L.const_int bool_t 0
@@ -53,7 +58,7 @@ let trans (functions, statements) =
   in
 
 
-  (* get our printing *)
+  (* Declare the printf builtin function *)
   let printf_t = L.var_arg_function_type num_t [| L.pointer_type i8_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
 
@@ -80,29 +85,34 @@ let trans (functions, statements) =
       and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
       in
 
+      (* Define the global variable table. *)
       let variable_table = {
         names = StringMap.empty;
         parent = None;
       } 
 
+      (* Get a reference to the global table we just created.
+        We will pass this scope via reference through recursive calls
+        and mutate it when we need to add a new variable. *)
       in let global_scope = ref variable_table 
       in
 
-      let rec find_variable (scope: var_table) name = 
-      try StringMap.find name scope.names
+      (* Find a variable, beginning in a given scope and searching upwards. *)
+      let rec find_variable (scope: var_table ref) name = 
+      try StringMap.find name !scope.names
       with Not_found ->
-        match scope.parent with
-            Some(parent) -> find_variable parent name
+        match !scope.parent with
+            Some(parent) -> find_variable (ref parent) name
           | _ -> raise Not_found
       in
 
-      (* Construct code for an expression; return its value *)
+      (* Generate LLVM code for an expression; return its value *)
       let rec expr builder scope (t, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
-        | SId id -> L.build_load (find_variable !scope id) id builder
-        | SAssign (n, e) -> add_local scope t n e; find_variable !scope n
+        | SId id -> L.build_load (find_variable scope id) id builder
+        | SAssign (n, e) -> add_local scope t n e; find_variable scope n
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
          and e1' = expr builder scope e1
@@ -136,6 +146,9 @@ let trans (functions, statements) =
         | SCall("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder scope e) |] "printf" builder
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
       
+      (* Construct code for a variable assigned in the given scope. 
+        Allocate on the stack, initialize its value, if appropriate, 
+        and mutate the given map to remember its value. *)
       and add_local (scope: var_table ref) t n e = 
         let e' = let (_, ex) = e in match ex with
             SNoexpr -> get_init_noexpr t
