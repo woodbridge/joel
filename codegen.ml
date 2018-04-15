@@ -113,6 +113,12 @@ let trans (functions, statements) =
         | SId id -> L.build_load (find_variable scope id) id builder
         | SAssign (n, e) -> update_variable scope n e; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
         | SAssignOp (n, op, e) -> expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), op, e)))) (* expand expression - i.e. a += 1 becomes a = a + 1 *)
+        | SPop (n, pop) -> let prev = expr builder scope (t, SId(n)) in (* expand expression - i.e. a++ becomes a = a + 1, and we return a's prev. value *)
+          expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), (
+            match pop with 
+              A.Inc -> A.Add
+            | A.Dec -> A.Sub
+          ), (t, SIntegerLiteral(1)))))); prev
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
          and e1' = expr builder scope e1
