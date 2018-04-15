@@ -23,7 +23,7 @@ let check (functions, statements) =
       body = [] } map
     (* need a list of built in functions to put here  *)
     in List.fold_left add_bind StringMap.empty [ ("printf", Num);
-                                                  ("printf", Bool) ]
+                                                  ("printb", Bool) ]
       (* [ ("print", Int);
 			                         ("printb", Bool);
 			                         ("printf", Float);

@@ -22,6 +22,10 @@ module StringMap = Map.Make(String)
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
 let trans (functions, statements) =
+
+  (* create a mutable map to hold the variables we've declared as we go *)
+  let global_vars = ref (StringMap.empty) in
+
   let context    = L.global_context () in
   (* Add types to the context so we can use them in our LLVM code *)
   let num_t      = L.double_type  context (* num type *)
@@ -39,6 +43,13 @@ let trans (functions, statements) =
     | A.Void  -> void_t
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
+
+  let get_init_noexpr = function
+      A.Num -> L.const_float num_t 0.0
+    | A.Bool -> L.const_int bool_t 0
+    | _ -> raise (Failure ("Error: Not Yet Implemented"))
+  in
+
 
   (* get our printing *)
   let printf_t = L.var_arg_function_type num_t [| L.pointer_type i8_t |] in
@@ -67,23 +78,17 @@ let trans (functions, statements) =
       and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
       in
 
-      (* Generates code to print out a sexpr 
-      let print_string e = let (_, sx) = e in
-        match sx with
-            SIntegerLiteral i -> string_of_int i
-          | SFloatLiteral f -> f
-          | _ -> raise (Failure ("Error: Not Yet Implemented"))
-      in *)
-
-      (* expression builder *)
-      let rec expr builder (_, e) = match e with
+      (* Construct code for an expression; return its value *)
+      let rec expr builder map (t, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
+        | SId id -> L.build_load (StringMap.find id !map) id builder
+        | SAssign (n, e) -> add_local map t n e; StringMap.find n !map
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
-         and e1' = expr builder e1
-         and e2' = expr builder e2 in
+         and e1' = expr builder map e1
+         and e2' = expr builder map e2 in
          if t = A.Num then (match op with
           A.Add     -> L.build_fadd 
           | A.Sub     -> L.build_fsub
@@ -106,27 +111,34 @@ let trans (functions, statements) =
           | A.Leq     -> L.build_icmp L.Icmp.Sle
           | A.Greater -> L.build_icmp L.Icmp.Sgt
           | A.Geq     -> L.build_icmp L.Icmp.Sge
+          | _ -> raise (Failure ("Error: Not Yet Implemented"))
            ) e1' e2' "tmp" builder
 
-        | SCall ("printf", [e]) -> let (t, _) = e in
-         ( match t with
-           | A.Num -> L.build_call printf_func [| float_format_str ; (expr builder e) |]
-           | A.Bool -> L.build_call printf_func [| int_format_str ; (expr builder e) |]
-           | _ -> raise (Failure ("Error: Not Yet Implemented"))
-         ) "printf" builder
+        | SCall ("printf", [e]) -> L.build_call printf_func [| float_format_str ; (expr builder map e) |] "printf" builder
+        | SCall("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder map e) |] "printf" builder
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
+      
+      and add_local m t n e = 
+        let e' = let (_, ex) = e in match ex with
+            SNoexpr -> get_init_noexpr t
+          | _ -> expr builder m e
+        in L.set_value_name n e';
+        let l_var = L.build_alloca (ltype_of_typ t) n builder in
+        ignore (L.build_store e' l_var builder);
+        m := StringMap.add n l_var !m 
+
       in
 
       (* statement builder *)
-      let build_statement = function
-           SExpr e -> (ignore(expr builder e))
+      let build_statement map stmt = match stmt with
+            SExpr e -> (ignore(expr builder map e))
+          | SStmtVDecl(t, n, e) -> (ignore(add_local map t n e))
           | _ -> raise (Failure ("Error: Not Yet Implemented"))
-
       in
-        List.iter build_statement statements; make_return builder; ()
+        List.iter (fun stmt -> build_statement global_vars stmt) statements; make_return builder; ()
 
   in
-    build_program_body statements;
+    build_program_body (List.rev statements);
     the_module
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
