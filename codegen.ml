@@ -111,7 +111,8 @@ let trans (functions, statements) =
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
         | SId id -> L.build_load (find_variable scope id) id builder
-        | SAssign (n, e) -> update_variable scope n e; find_variable scope n
+        | SAssign (n, e) -> update_variable scope n e; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
+        | SAssignOp (n, op, e) -> expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), op, e)))) (* expand expression - i.e. a += 1 becomes a = a + 1 *)
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
          and e1' = expr builder scope e1

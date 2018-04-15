@@ -56,7 +56,7 @@ let check (functions, statements) =
     variables = StringMap.empty;
     parent = None;
   }
-  
+
   in
 
   let rec find_variable (scope: symbol_table) name =
@@ -157,7 +157,7 @@ let check (functions, statements) =
             Add | Sub | Mult | Div | Mod when same_type && lt = Num -> Num
           | Add when same_type && lt = String -> String
           | _ -> raise (Failure("illegal assignment."))
-          in (ty, SAssign(id, (rt, e')))
+          in (ty, SAssignOp(id, op, (rt, e')))
     | Noexpr -> (Void, SNoexpr)
     | Id s -> (find_variable table s, SId s)
   in

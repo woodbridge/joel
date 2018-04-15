@@ -98,7 +98,7 @@ let rec string_of_expr = function
   | Unop(uop, e) -> string_of_uop uop ^ string_of_expr e
   | Pop(s, pop) -> s ^ string_of_pop pop
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
-  | AssignOp(v, op, e) -> v ^ string_of_op op ^ "=" ^string_of_expr e
+  | AssignOp(v, op, e) -> v ^ " " ^ string_of_op op ^ "=" ^ " " ^ string_of_expr e
   | Noexpr -> ""
 
 let rec string_of_stmt = function
