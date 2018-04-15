@@ -56,6 +56,7 @@ let check (functions, statements) =
     variables = StringMap.empty;
     parent = None;
   }
+  
   in
 
   let rec find_variable (scope: symbol_table) name =

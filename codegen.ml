@@ -19,12 +19,14 @@ open Sast
 
 module StringMap = Map.Make(String)
 
+type var_table = {
+  names: L.llvalue StringMap.t; (* Names bound in current block *)
+  parent: var_table option; (* Enclosing scope *)
+}
+
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
 let trans (functions, statements) =
-
-  (* create a mutable map to hold the variables we've declared as we go *)
-  let global_vars = ref (StringMap.empty) in
 
   let context    = L.global_context () in
   (* Add types to the context so we can use them in our LLVM code *)
@@ -78,17 +80,33 @@ let trans (functions, statements) =
       and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
       in
 
+      let variable_table = {
+        names = StringMap.empty;
+        parent = None;
+      } 
+
+      in let global_scope = ref variable_table 
+      in
+
+      let rec find_variable (scope: var_table) name = 
+      try StringMap.find name scope.names
+      with Not_found ->
+        match scope.parent with
+            Some(parent) -> find_variable parent name
+          | _ -> raise Not_found
+      in
+
       (* Construct code for an expression; return its value *)
-      let rec expr builder map (t, e) = match e with
+      let rec expr builder scope (t, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
-        | SId id -> L.build_load (StringMap.find id !map) id builder
-        | SAssign (n, e) -> add_local map t n e; StringMap.find n !map
+        | SId id -> L.build_load (find_variable !scope id) id builder
+        | SAssign (n, e) -> add_local scope t n e; find_variable !scope n
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
-         and e1' = expr builder map e1
-         and e2' = expr builder map e2 in
+         and e1' = expr builder scope e1
+         and e2' = expr builder scope e2 in
          if t = A.Num then (match op with
           A.Add     -> L.build_fadd 
           | A.Sub     -> L.build_fsub
@@ -114,28 +132,31 @@ let trans (functions, statements) =
           | _ -> raise (Failure ("Error: Not Yet Implemented"))
            ) e1' e2' "tmp" builder
 
-        | SCall ("printf", [e]) -> L.build_call printf_func [| float_format_str ; (expr builder map e) |] "printf" builder
-        | SCall("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder map e) |] "printf" builder
+        | SCall ("printf", [e]) -> L.build_call printf_func [| float_format_str ; (expr builder scope e) |] "printf" builder
+        | SCall("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder scope e) |] "printf" builder
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
       
-      and add_local m t n e = 
+      and add_local (scope: var_table ref) t n e = 
         let e' = let (_, ex) = e in match ex with
             SNoexpr -> get_init_noexpr t
-          | _ -> expr builder m e
+          | _ -> expr builder scope e
         in L.set_value_name n e';
         let l_var = L.build_alloca (ltype_of_typ t) n builder in
         ignore (L.build_store e' l_var builder);
-        m := StringMap.add n l_var !m 
+        scope := {
+          names = StringMap.add n l_var !scope.names;
+          parent = !scope.parent;
+        }
 
       in
 
       (* statement builder *)
-      let build_statement map stmt = match stmt with
-            SExpr e -> (ignore(expr builder map e))
-          | SStmtVDecl(t, n, e) -> (ignore(add_local map t n e))
+      let build_statement scope stmt = match stmt with
+            SExpr e -> (ignore(expr builder scope e))
+          | SStmtVDecl(t, n, e) -> (ignore(add_local scope t n e))
           | _ -> raise (Failure ("Error: Not Yet Implemented"))
       in
-        List.iter (fun stmt -> build_statement global_vars stmt) statements; make_return builder; ()
+        List.iter (fun stmt -> build_statement global_scope stmt) statements; make_return builder; ()
 
   in
     build_program_body (List.rev statements);
