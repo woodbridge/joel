@@ -214,15 +214,18 @@ let trans (functions, statements) =
               let () = add_terminal else_builder branch_instr in
 
             let _ = L.build_cond_br bool_val then_bb else_bb builder in
+              (* Return a builder pointing at this new merge block.
+                 It's now our main block. *)
               L.builder_at_end context merge_bb
 
           | _ as t ->
             let str = Sast.string_of_sstmt t in
               Printf.printf "type: %s." str; raise (Failure ("Error: Not Yet Implemented"))
       in
-        (* THIS NEEDS TO USE THE RETURNED BUILDER *)
-        let reducer builder stmt = build_statement global_scope stmt builder in
-          let final_builder = List.fold_left reducer builder statements in
+
+        let statement_reducer builder stmt = build_statement global_scope stmt builder in
+          (* Builder gets updated with each call *)
+          let final_builder = List.fold_left statement_reducer builder statements in
             make_return final_builder; ()
         (* List.iter (fun stmt -> let _ = build_statement global_scope stmt builder in ()) statements; make_return builder; () *)
 
