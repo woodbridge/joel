@@ -191,13 +191,40 @@ let trans (functions, statements) =
           | _ -> raise Not_found
       in
 
-      (* Build a single statement. Should return a unit value. *)
-      let build_statement scope stmt = match stmt with
-            SExpr e -> (ignore(expr builder scope e))
-          | SStmtVDecl(t, n, e) -> (ignore(add_variable scope t n e))
-          | _ -> raise (Failure ("Error: Not Yet Implemented"))
+      (* Build a single statement. Should return a builder. *)
+      let rec build_statement scope stmt builder = match stmt with
+            SExpr e -> let _ = expr builder scope e in builder
+          | SBlock sl ->
+            let build new_builder stmt = build_statement scope stmt new_builder in
+              List.fold_left build builder sl
+          | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e in builder          
+          | SIf (predicate, then_stmt, else_stmt) ->
+            let bool_val = expr builder scope predicate in
+            (* create merge bb  *)
+            let merge_bb = L.append_block context "merge" the_function in
+              let branch_instr = L.build_br merge_bb in
+            (* create then bb *)
+            let then_bb = L.append_block context "then" the_function in
+              let then_builder = build_statement scope then_stmt (L.builder_at_end context then_bb) in
+              let () = add_terminal then_builder branch_instr in
+
+            (* create else bb *)
+            let else_bb = L.append_block context "else" the_function in
+              let else_builder = build_statement scope else_stmt (L.builder_at_end context else_bb) in
+              let () = add_terminal else_builder branch_instr in
+
+            let _ = L.build_cond_br bool_val then_bb else_bb builder in
+              L.builder_at_end context merge_bb
+
+          | _ as t ->
+            let str = Sast.string_of_sstmt t in
+              Printf.printf "type: %s." str; raise (Failure ("Error: Not Yet Implemented"))
       in
-        List.iter (fun stmt -> build_statement global_scope stmt) statements; make_return builder; ()
+        (* THIS NEEDS TO USE THE RETURNED BUILDER *)
+        let reducer builder stmt = build_statement global_scope stmt builder in
+          let final_builder = List.fold_left reducer builder statements in
+            make_return final_builder; ()
+        (* List.iter (fun stmt -> let _ = build_statement global_scope stmt builder in ()) statements; make_return builder; () *)
 
   in
     build_program_body (List.rev statements);

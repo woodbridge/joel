@@ -49,14 +49,12 @@ type sfunc_decl = {
 
 type sprogram = sfunc_decl list * sstmt list
 
-(* Pretty-printing functions
-
 let rec string_of_sexpr (t, e) =
   "(" ^ string_of_typ t ^ " : " ^ (match e with
-    SLiteral(l) -> string_of_int l
-  | SBoolLit(true) -> "true"
-  | SBoolLit(false) -> "false"
-  | SFliteral(l) -> l
+    SIntegerLiteral(l) -> string_of_int l
+  | SBoolLiteral(true) -> "true"
+  | SBoolLiteral(false) -> "false"
+  | SFloatLiteral(l) -> l
   | SId(s) -> s
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
@@ -81,7 +79,8 @@ let rec string_of_sstmt = function
       string_of_sexpr e3  ^ ") " ^ string_of_sstmt s
   | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
 
-let string_of_sfdecl fdecl =
+
+(* let string_of_sfdecl fdecl =
   string_of_typ fdecl.styp ^ " " ^
   fdecl.sfname ^ "(" ^ String.concat ", " (List.map snd fdecl.sformals) ^
   ")\n{\n" ^
@@ -92,4 +91,4 @@ let string_of_sfdecl fdecl =
 let string_of_sprogram (vars, funcs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_sfdecl funcs)
-*)
+ *)
