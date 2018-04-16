@@ -12,8 +12,19 @@ module StringMap = Map.Make(String)
    Check each global variable, then check each function *)
 
 let check (functions, statements) =
+  
+(* for printing out a list of the statements for debugging
+  let rec print_list = function
+    [] -> ()
+  | e::l -> Printf.printf "%s\n END\n" e ; print_list l
+  in
+  let s = List.map string_of_stmt statements
+  in 
+  let () = print_list s
+  in
+*)
 
-
+	
 
   (* Collect function declarations for built-in functions: no bodies *)
   let built_in_decls =
@@ -189,7 +200,9 @@ let check (functions, statements) =
         | Block sl :: ss  -> check_statement_list (sl @ ss) (* Flatten blocks *)
         | s :: ss         -> (check_statement scope s) :: check_statement_list ss
         | []              -> []
-      in List.hd (List.rev (check_statement_list sl))
+      in let table_lst = check_statement_list sl
+      in if List.length table_lst > 0 then List.hd (List.rev (check_statement_list sl))
+      else scope
   | If(p, b1, b2) ->
     let scope2 = check_statement scope b1 in
     check_statement scope2 b2
