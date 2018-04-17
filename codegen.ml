@@ -217,6 +217,23 @@ let trans (functions, statements) =
               (* Return a builder pointing at this new merge block.
                  It's now our main block. *)
               L.builder_at_end context merge_bb
+          | SWhile (predicate, body) ->
+            (* predicate block -- checks the condition. *)
+            let pred_bb = L.append_block context "while" the_function in
+              let _ = L.build_br pred_bb builder in
+                (*  main body block -- execute the while loop code*)
+                let body_bb = L.append_block context "while_body" the_function in
+                    (* generate code for the main body *)
+                  let while_builder = build_statement scope body (L.builder_at_end context body_bb) in
+                let () = add_terminal while_builder (L.build_br pred_bb) in
+                  (* generate code in our predicate block *)
+                  let pred_builder = L.builder_at_end context pred_bb in
+                  let bool_val = expr pred_builder scope predicate in
+                    (*  merge block -- way out of the loop and our new main block *)
+                    let merge_bb = L.append_block context "merge" the_function in
+                    let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
+                      L.builder_at_end context merge_bb
+
 
           | _ as t ->
             let str = Sast.string_of_sstmt t in
