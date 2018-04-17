@@ -14,7 +14,8 @@ let check (_, statements) =
 	      formals = [(ty, "x")];
 	      body = [] } map
 	    in List.fold_left add_bind StringMap.empty [  ("printf", Num);
-	                                                  ("printb", Bool) ]
+	                                                  ("printb", Bool);
+	                                                  ("print", String) ]
 	in
 
 	(* Define the global variable table. *)
