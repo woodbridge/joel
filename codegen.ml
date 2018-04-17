@@ -36,6 +36,7 @@ let trans (functions, statements) =
   and i32_t      = L.i32_type     context (* int type (for returns) *)
   and i8_t       = L.i8_type      context (* pointer type *)
   and bool_t       = L.i1_type    context (* boolean type *)
+  and list_t     = L.array_type         (* list type *)
   and void_t     = L.void_type    context (* void type *)
 
   (* Create an LLVM module - a container for our code *)
@@ -46,6 +47,7 @@ let trans (functions, statements) =
       A.Num   -> num_t
     | A.Bool  -> bool_t
     | A.Void  -> void_t
+    | A.List  -> list_t
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
 
@@ -107,11 +109,20 @@ let trans (functions, statements) =
           | _ -> raise Not_found
       in
 
+      let find_list_type l =
+        match (List.hd l) with 
+          A.IntegerLiteral _  -> ltype_of_typ (A.Num)
+        | FloatLiteral _      -> ltype_of_typ (A.Num)
+        | BoolLiteral _       -> ltype_of_typ (A.Bool)
+        | _                   -> raise (Failure("Unsupported list type."))
+      in 
+
       (* Generate LLVM code for an expression; return its value *)
       let rec expr builder scope (t, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
+        | SListLiteral s -> L.const_array (find_list_type s) (Array.of_list (List.map (expr builder scope) s)) 
         | SId id -> L.build_load (find_variable scope id) id builder
         | SAssign (n, e) -> update_variable scope n e; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
         | SAssignOp (n, op, e) -> expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), op, e)))) (* expand expression - i.e. a += 1 becomes a = a + 1 *)
