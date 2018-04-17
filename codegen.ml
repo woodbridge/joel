@@ -27,7 +27,7 @@ type var_table = {
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
-let trans (functions, statements) =
+let trans (_, statements) =
 
   let context    = L.global_context () in
 
@@ -81,8 +81,8 @@ let trans (functions, statements) =
   (* Iterate through the list of semantically-checked statements, generating code for each one. *)
   let build_program_body statements =
     let builder = L.builder_at_end context (L.entry_block the_function) in
-      let str_format_str  = L.build_global_stringptr "%s\n" "fmt" builder 
-      and int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
+      (* let str_format_str  = L.build_global_stringptr "%s\n" "fmt" builder
+      and *) let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
       and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
       in
 
@@ -218,6 +218,26 @@ let trans (functions, statements) =
               (* Return a builder pointing at this new merge block.
                  It's now our main block. *)
               L.builder_at_end context merge_bb
+
+          | SWhile (predicate, body) ->
+            (* predicate block -- checks the condition. *)
+
+            let pred_bb = L.append_block context "while" the_function in
+              let _ = L.build_br pred_bb builder in
+                (* generate predicate code *)
+                let pred_builder = L.builder_at_end context pred_bb in
+                  let bool_val = expr pred_builder scope predicate in
+                    let body_bb = L.append_block context "while_body" the_function in
+                      let while_builder = build_statement scope body (L.builder_at_end context body_bb) in
+                        let () = add_terminal while_builder (L.build_br pred_bb) in                      
+                    let merge_bb = L.append_block context "merge" the_function in
+                    let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
+                      L.builder_at_end context merge_bb
+
+          | SFor(e1, e2, e3, body) -> build_statement scope
+              ( SBlock [SExpr e1 ;
+                        SWhile(e2, SBlock[ body ; 
+                                           SExpr e3] ) ] ) builder
 
           | _ as t ->
             let str = Sast.string_of_sstmt t in
