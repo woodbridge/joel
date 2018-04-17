@@ -179,7 +179,7 @@ let check (_, statements) =
         | Block sl :: ss  -> convert_statement_list (sl @ ss) (* Flatten blocks *)
         | s :: ss         -> convert_statement new_scope_r s :: convert_statement_list ss
         | []              -> []
-      in SBlock(convert_statement_list (List.rev sl))
+      in SBlock(List.rev (convert_statement_list (List.rev sl)))
   | If(p, b1, b2) -> SIf(check_bool_expr scope p, convert_statement scope b1, convert_statement scope b2)
   | For(e1, e2, e3, st) ->
     SFor(convert_expr scope e1, check_bool_expr scope e2, convert_expr scope e3, convert_statement scope st)

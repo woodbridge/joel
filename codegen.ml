@@ -104,7 +104,7 @@ let trans (functions, statements) =
       with Not_found ->
         match !scope.parent with
             Some(parent) -> find_variable (ref parent) name
-          | _ -> raise Not_found
+          | _ -> print_string ("Lookup error: " ^ name); raise Not_found
       in
 
       (* Generate LLVM code for an expression; return its value *)
@@ -188,15 +188,20 @@ let trans (functions, statements) =
       with Not_found -> (* If variable is not in this scope, check the parent scope *)
         match !scope.parent with
             Some(parent) -> ignore(find_variable (ref parent) name); ()
-          | _ -> raise Not_found
+          | _ -> print_string ("Update error: " ^ name); raise Not_found
       in
 
       (* Build a single statement. Should return a builder. *)
       let rec build_statement scope stmt builder = match stmt with
             SExpr e -> let _ = expr builder scope e in builder
           | SBlock sl ->
-            let build new_builder stmt = build_statement scope stmt new_builder in
-              List.fold_left build builder sl
+            let new_scope = {
+              names = StringMap.empty;
+              parent = Some(!scope);
+            }
+            in let new_scope_r = ref new_scope in 
+            let build builder stmt = build_statement new_scope_r stmt builder
+            in List.fold_left build builder sl 
           | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e in builder          
           | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder scope predicate in
@@ -230,7 +235,7 @@ let trans (functions, statements) =
         (* List.iter (fun stmt -> let _ = build_statement global_scope stmt builder in ()) statements; make_return builder; () *)
 
   in
-    build_program_body (List.rev statements);
+    build_program_body (statements);
     the_module
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
