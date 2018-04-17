@@ -234,6 +234,10 @@ let trans (functions, statements) =
                     let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
                       L.builder_at_end context merge_bb
 
+          | SFor(e1, e2, e3, body) -> build_statement scope
+              ( SBlock [SExpr e1 ;
+                        SWhile(e2, SBlock[ body ; 
+                                           SExpr e3] ) ] ) builder
 
           | _ as t ->
             let str = Sast.string_of_sstmt t in
