@@ -12,19 +12,19 @@ module StringMap = Map.Make(String)
    Check each global variable, then check each function *)
 
 let check (functions, statements) =
-  
+
 (* for printing out a list of the statements for debugging
   let rec print_list = function
     [] -> ()
   | e::l -> Printf.printf "%s\n END\n" e ; print_list l
   in
   let s = List.map string_of_stmt statements
-  in 
+  in
   let () = print_list s
   in
 *)
 
-	
+
 
   (* Collect function declarations for built-in functions: no bodies *)
   let built_in_decls =
@@ -98,7 +98,7 @@ let check (functions, statements) =
       let convert_pair (e1, e2) =
         (convert_expr table e1, convert_expr table e2)
       in (Dict, SDictLiteral(List.map convert_pair row))
-    | Binop(e1, op, e2) as e ->
+    | Binop(e1, op, e2) ->
       let (t1, e1') = convert_expr table e1
       and (t2, e2') = convert_expr table e2 in
       let same_type = t1 = t2 in
@@ -113,7 +113,7 @@ let check (functions, statements) =
                          string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
                          string_of_typ t2 ^ " in " ^ string_of_expr e)) *)
         in (ty, SBinop((t1, e1'), op, (t2, e2')))
-    | Unop(op, e1) as e ->
+    | Unop(op, e1) ->
         let (t, e1') = convert_expr table e1 in
         let ty = match op with
           Neg when t = Num -> Num
@@ -125,7 +125,7 @@ let check (functions, statements) =
                      " in " ^ string_of_expr ex) *)
           )
         in (ty, SUnop(op, (t, e1')))
-    | Pop(id, op) as e ->
+    | Pop(id, op) ->
       let t = find_variable table id in
       let ty = match op with
           Inc when t = Num -> Num
@@ -134,7 +134,7 @@ let check (functions, statements) =
             Failure("illegal use of pop operator.")
           )
       in (ty, SPop(id, op))
-    | Call(fname, args) as call ->
+    | Call(fname, args) ->
         let fd = find_func fname in
         let param_length = List.length fd.formals in
         if List.length args != param_length then
@@ -151,14 +151,14 @@ let check (functions, statements) =
         in
         let args' = List.map2 check_call fd.formals args
         in (fd.typ, SCall(fname, args'))
-    | Assign(id, e) as ex ->
+    | Assign(id, e) ->
         let lt = find_variable table id
         and (rt, e') = convert_expr table e in
         let err = "illegal assignment."
         (* let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
           string_of_typ rt ^ " in " ^ string_of_expr ex *)
         in (check_assign lt rt err, SAssign(id, (rt, e')))
-    | AssignOp(id, op, e) as ex ->
+    | AssignOp(id, op, e) ->
         let lt = find_variable table id
         and (rt, e') = convert_expr table e in
         (* let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
@@ -181,14 +181,9 @@ let check (functions, statements) =
     else raise(Failure("Expected different type of expression."))
   in
 
-  let get_first_item (a, _) = a
-  in
-  let get_second_item (_, a) = a
-  in
-
   let rec check_statement (scope: symbol_table) stmt = match stmt with
-  | Expr e -> scope
-  | StmtVDecl (ty, id, exp) ->
+  | Expr _ -> scope
+  | StmtVDecl (ty, id, _) ->
     {
       variables = StringMap.add id ty scope.variables;
       parent = None;
@@ -203,14 +198,14 @@ let check (functions, statements) =
       in let table_lst = check_statement_list sl
       in if List.length table_lst > 0 then List.hd (List.rev (check_statement_list sl))
       else scope
-  | If(p, b1, b2) ->
+  | If(_, b1, b2) ->
     let scope2 = check_statement scope b1 in
     check_statement scope2 b2
-  | For(e1, e2, e3, st) -> scope
-  | ForDecl(e1_ty, e1_id, e1_ex, e2, e3, st) -> scope
-  | ForEach(t, e1, e2) -> scope
-  | While(e, st) -> check_statement scope st
-  | Return e ->  raise (
+  | For(_, _, _, _) -> scope
+  | ForDecl(_, _, _, _, _, _) -> scope
+  | ForEach(_, _, _) -> scope
+  | While(_, st) -> check_statement scope st
+  | Return _ ->  raise (
       Failure("Cannot return unless inside a function.")
     )
   in
@@ -251,7 +246,7 @@ let check (functions, statements) =
     SForEach(t, convert_expr variable_table e1, convert_expr variable_table e2)
   | While(e, st) ->
     SWhile(convert_expr variable_table e, convert_statement st)
-  | Return e ->
+  | Return _ ->
     raise (
       Failure("Cannot return unless inside of a function.")
     (*Failure ("return gives " ^ string_of_typ t ^ " expected " ^
@@ -300,7 +295,7 @@ let check (functions, statements) =
       SForEach(t, convert_expr function_table e1, convert_expr function_table e2)
     | While(e, st) ->
       SWhile(convert_expr function_table e, convert_func_statement st)
-    | Return e ->
+    | Return _ ->
       raise (
         Failure("Cannot return unless inside of a function.")
       (*Failure ("return gives " ^ string_of_typ t ^ " expected " ^
