@@ -55,6 +55,7 @@ let rec string_of_sexpr (t, e) =
   | SBoolLiteral(true) -> "true"
   | SBoolLiteral(false) -> "false"
   | SFloatLiteral(l) -> l
+  | SStringLiteral(s) -> s
   | SId(s) -> s
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
@@ -63,11 +64,12 @@ let rec string_of_sexpr (t, e) =
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""
-				  ) ^ ")"
+  | _ -> "not yet implemented\n" ) ^ ")"
 
 let rec string_of_sstmt = function
     SBlock(stmts) ->
-      "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
+      "{\n\t" ^ String.concat "\t" (List.map string_of_sstmt stmts) ^ "}\n"
+  | SStmtVDecl(_, id, e) -> "declared: " ^ id ^ " = " ^ string_of_sexpr e ^ "\n"
   | SExpr(expr) -> string_of_sexpr expr ^ ";\n";
   | SReturn(expr) -> "return " ^ string_of_sexpr expr ^ ";\n";
   | SIf(e, s, SBlock([])) ->
@@ -78,7 +80,11 @@ let rec string_of_sstmt = function
       "for (" ^ string_of_sexpr e1  ^ " ; " ^ string_of_sexpr e2 ^ " ; " ^
       string_of_sexpr e3  ^ ") " ^ string_of_sstmt s
   | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
+  | _ -> "not yet implemented\n"
 
+let string_of_sprogram (_, stmts) =
+  String.concat "" (List.map string_of_sstmt stmts) ^ "\n" (* ^
+  String.concat "\n" (List.map string_of_sfdecl funcs)*)
 
 (* let string_of_sfdecl fdecl =
   string_of_typ fdecl.styp ^ " " ^
