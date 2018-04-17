@@ -174,13 +174,9 @@ let trans (functions, statements) =
         Bind the nearest occurrence of the variable to the given
         new value, and mutate the given map to remember its value. *)
       and update_variable (scope: var_table ref) name e =
-      try ignore(StringMap.find name !scope.names);
-      let e' = let (t, ex) = e in match ex with
-            SNoexpr -> get_init_noexpr t
-          | _ -> expr builder scope e
-        in L.set_value_name name e';
-        let (t, _) = e in let l_var = L.build_alloca (ltype_of_typ t) name builder in
-        ignore (L.build_store e' l_var builder);
+      try let e' = expr builder scope e in
+        let l_var = find_variable scope name 
+        in ignore (L.build_store e' l_var builder);
         scope := {
           names = StringMap.add name l_var !scope.names;
           parent = !scope.parent;
