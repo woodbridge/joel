@@ -113,7 +113,8 @@ let trans (functions, statements) =
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
         | SId id -> L.build_load (find_variable scope id) id builder
-        | SAssign (n, e) -> update_variable scope n e; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
+          (* TODO: So should this update the scope?... or it mutates it? *)
+        | SAssign (n, e) -> update_variable scope n e builder; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
         | SAssignOp (n, op, e) -> expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), op, e)))) (* expand expression - i.e. a += 1 becomes a = a + 1 *)
         | SPop (n, pop) -> let prev = expr builder scope (t, SId(n)) in (* expand expression - i.e. a++ becomes a = a + 1, and we return a's prev. value *)
           ignore(expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), (
@@ -158,7 +159,7 @@ let trans (functions, statements) =
       (* Construct code for a variable assigned in the given scope. 
         Allocate on the stack, initialize its value, if appropriate, 
         and mutate the given map to remember its value. *)
-      and add_variable (scope: var_table ref) t n e = 
+      and add_variable (scope: var_table ref) t n e builder = 
         let e' = let (_, ex) = e in match ex with
             SNoexpr -> get_init_noexpr t
           | _ -> expr builder scope e
@@ -173,7 +174,7 @@ let trans (functions, statements) =
       (* Update a variable, beginning in the given scope.
         Bind the nearest occurrence of the variable to the given
         new value, and mutate the given map to remember its value. *)
-      and update_variable (scope: var_table ref) name e =
+      and update_variable (scope: var_table ref) name e builder =
       try ignore(StringMap.find name !scope.names);
       let e' = let (t, ex) = e in match ex with
             SNoexpr -> get_init_noexpr t
@@ -185,6 +186,7 @@ let trans (functions, statements) =
           names = StringMap.add name l_var !scope.names;
           parent = !scope.parent;
         }
+
       with Not_found -> (* If variable is not in this scope, check the parent scope *)
         match !scope.parent with
             Some(parent) -> ignore(find_variable (ref parent) name); ()
@@ -197,7 +199,7 @@ let trans (functions, statements) =
           | SBlock sl ->
             let build new_builder stmt = build_statement scope stmt new_builder in
               List.fold_left build builder sl
-          | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e in builder          
+          | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e builder in builder
           | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder scope predicate in
             (* create merge bb  *)
@@ -219,6 +221,22 @@ let trans (functions, statements) =
               L.builder_at_end context merge_bb
           | SWhile (predicate, body) ->
             (* predicate block -- checks the condition. *)
+
+            let pred_bb = L.append_block context "while" the_function in
+              let _ = L.build_br pred_bb builder in
+                (* generate predicate code *)
+                let pred_builder = L.builder_at_end context pred_bb in
+                  let bool_val = expr pred_builder scope predicate in
+                    let body_bb = L.append_block context "while_body" the_function in
+                      let while_builder = build_statement scope body (L.builder_at_end context body_bb) in
+                        let () = add_terminal while_builder (L.build_br pred_bb) in                      
+                    let merge_bb = L.append_block context "merge" the_function in
+                    let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
+                      L.builder_at_end context merge_bb
+
+
+
+(*
             let pred_bb = L.append_block context "while" the_function in
               let _ = L.build_br pred_bb builder in
                 (*  main body block -- execute the while loop code*)
@@ -227,13 +245,15 @@ let trans (functions, statements) =
                   let while_builder = build_statement scope body (L.builder_at_end context body_bb) in
                 let () = add_terminal while_builder (L.build_br pred_bb) in
                   (* generate code in our predicate block *)
+
+
                   let pred_builder = L.builder_at_end context pred_bb in
                   let bool_val = expr pred_builder scope predicate in
                     (*  merge block -- way out of the loop and our new main block *)
                     let merge_bb = L.append_block context "merge" the_function in
                     let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
                       L.builder_at_end context merge_bb
-
+*)
           | SFor(e1, e2, e3, body) -> build_statement scope
               ( SBlock [SExpr e1 ;
                         SWhile(e2, SBlock[ body ; 
