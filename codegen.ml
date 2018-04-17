@@ -113,7 +113,7 @@ let trans (functions, statements) =
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
         | SId id -> L.build_load (find_variable scope id) id builder
-        | SAssign (n, e) -> update_variable scope n e; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
+        | SAssign (n, e) -> update_variable scope n e builder; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
         | SAssignOp (n, op, e) -> expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), op, e)))) (* expand expression - i.e. a += 1 becomes a = a + 1 *)
         | SPop (n, pop) -> let prev = expr builder scope (t, SId(n)) in (* expand expression - i.e. a++ becomes a = a + 1, and we return a's prev. value *)
           ignore(expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), (
@@ -158,7 +158,7 @@ let trans (functions, statements) =
       (* Construct code for a variable assigned in the given scope. 
         Allocate on the stack, initialize its value, if appropriate, 
         and mutate the given map to remember its value. *)
-      and add_variable (scope: var_table ref) t n e = 
+      and add_variable (scope: var_table ref) t n e builder = 
         let e' = let (_, ex) = e in match ex with
             SNoexpr -> get_init_noexpr t
           | _ -> expr builder scope e
@@ -173,7 +173,7 @@ let trans (functions, statements) =
       (* Update a variable, beginning in the given scope.
         Bind the nearest occurrence of the variable to the given
         new value, and mutate the given map to remember its value. *)
-      and update_variable (scope: var_table ref) name e =
+      and update_variable (scope: var_table ref) name e builder =
       try let e' = expr builder scope e in
         let l_var = find_variable scope name 
         in ignore (L.build_store e' l_var builder);
@@ -198,7 +198,7 @@ let trans (functions, statements) =
             in let new_scope_r = ref new_scope in 
             let build builder stmt = build_statement new_scope_r stmt builder
             in List.fold_left build builder sl 
-          | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e in builder          
+          | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e builder in builder          
           | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder scope predicate in
             (* create merge bb  *)
