@@ -63,7 +63,13 @@ let rec string_of_sexpr (t, e) =
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""
-				  ) ^ ")"
+  | SStringLiteral(_) -> "(SStringLiteral)"
+  | SListLiteral(_) -> "(SListLiteral)"
+  | SDictLiteral(_) -> "(SDictLiteral)"
+  | STableLiteral(_) -> "(STableLiteral)"
+  | SPop(_, _) -> "(SPop)"
+  | SAssignOp(_, _, _) -> "(SAssignOp)"
+  ) ^ ")"
 
 let rec string_of_sstmt = function
     SBlock(stmts) ->
