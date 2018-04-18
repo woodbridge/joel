@@ -29,11 +29,11 @@ let check (_, statements) =
   	(* Get a reference to the global table we just created.
     We will pass this scope via reference through recursive calls
     and mutate it when we need to add a new variable. *)
-  	let global_scope = ref variable_table 
+  	let global_scope = ref variable_table
   	in
 
   	(* Find a variable, beginning in a given scope and searching upwards. *)
-  	let rec find_variable (scope: symbol_table ref) name = 
+  	let rec find_variable (scope: symbol_table ref) name =
     	try StringMap.find name !scope.variables
     	with Not_found ->
       		match !scope.parent with
@@ -42,7 +42,7 @@ let check (_, statements) =
   	in
 
   	(* Map a variable's name to its type in the symbol table. *)
-   	let add_variable (scope: symbol_table ref) t n = 
+   	let add_variable (scope: symbol_table ref) t n =
    		try let _ = StringMap.find n !scope.variables in raise (E.DuplicateVariable(n))
    		with Not_found ->
       	scope := {
@@ -54,7 +54,7 @@ let check (_, statements) =
   	(* Raise an exception if the given rvalue type cannot be assigned to
      the given lvalue type *)
   	let check_assign lvaluet rvaluet =
-    	if lvaluet = rvaluet then lvaluet 
+    	if lvaluet = rvaluet then lvaluet
     	else raise (E.InvalidAssignment)
   	in
 
@@ -141,8 +141,8 @@ let check (_, statements) =
   let convert_vardecl scope (ty, id, e) =
     let (e_ty, e') = convert_expr scope e in
     let same_type = ty = e_ty in
-    if same_type then 
-    let _ = add_variable scope ty id 
+    if same_type then
+    let _ = add_variable scope ty id
     in SStmtVDecl(e_ty, id, (e_ty, e'))
     (* TODO: fix to add better error message *)
     else raise(E.InvalidAssignment)
@@ -162,7 +162,7 @@ let check (_, statements) =
               variables = StringMap.empty;
               parent = Some(!scope);
       }
-      in let new_scope_r = ref new_scope in 
+      in let new_scope_r = ref new_scope in
       let rec convert_statement_list = function
           [Return _ as s] -> [convert_statement new_scope_r s]
         | Return _ :: _   -> raise (E.NothingAfterReturn)
@@ -194,4 +194,3 @@ let check (_, statements) =
 
   let statements' = List.map convert_statements (List.rev statements)
 in(built_in_decls, statements')
-
