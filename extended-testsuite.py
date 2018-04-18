@@ -10,6 +10,8 @@ LLI = "/usr/local/opt/llvm@3.8/bin/lli-3.8"
 # test all files matching a given pattern - e.g. "tests/test-*.joel"
 def test(files):
 	passes = 0
+	num_tests = len(files)
+	test_no = 1
 
 	for file in files:
 		passed = True
@@ -18,7 +20,7 @@ def test(files):
 		err_file = file[0:file.index(".joel")] + ".err"
 		gold_standard = file[0:file.index(".joel")] + ".out"
 
-		print("Running... " + file)
+		print("(" + str(test_no) + "/" + str(num_tests) + ") Running " + file)
 
 		# attempt to generate the LLVM code resulting from this program
 		result = subprocess.run(['./toplevel.native', file],
@@ -56,10 +58,12 @@ def test(files):
 					passed = False
 
 		if passed:
-			print("SUCCESS")
+			print("+ SUCCESS")
 			passes += 1
 		else:
-			print("FAILED")
+			print("- FAILED")
+
+		test_no += 1
 
 	return passes
 
