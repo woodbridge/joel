@@ -4,7 +4,8 @@ import itertools
 import build
 
 # LLI location
-LLI = "/usr/local/opt/llvm@3.8/bin/lli-3.8"
+LLI = "lli"
+# LLI = "/usr/local/opt/llvm@3.8/bin/lli-3.8"
 
 
 # test all files matching a given pattern - e.g. "tests/test-*.joel"

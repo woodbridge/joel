@@ -47,6 +47,6 @@ To run the script to compile the compiler, simply run ``python3 build.py``. If a
 7. ``test-if.joel``: Tests if statements.
 
 ##### Negative Tests
-1. fail-assign.joel
-2. fail-scope.joel
-3. fail-multiplication.joel
+1. ``fail-assign.joel``: Attempts to assign a string to a variable of num type. Tests InvalidAssignment error.
+2. ``fail-scope.joel``: Attempts to access a variable whose name has gone out of scope. Tests UndefinedId error.
+3. ``fail-multiplication.joel``: Attempts to multiply two strings. Tests InvalidBinaryOperation error.
