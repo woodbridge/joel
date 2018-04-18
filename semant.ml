@@ -1,106 +1,81 @@
-(* Semantic checking for the MicroC compiler *)
-(* TODO: Does modulo reject if one or both operands are not integers? *)
+(* Semantic checking for the Joel compiler *)
 
 open Ast
 open Sast
 
 module StringMap = Map.Make(String)
+module E = Exceptions
 
-(* Semantic checking of the AST. Returns an SAST if successful,
-   throws an exception if something is wrong.
+let check (_, statements) =
 
-   Check each global variable, then check each function *)
+	(* Collect function declarations for built-in functions: no bodies *)
+	let built_in_decls =
+	    let add_bind map (name, ty) = StringMap.add name {
+	      typ = Void; fname = name;
+	      formals = [(ty, "x")];
+	      body = [] } map
+	    in List.fold_left add_bind StringMap.empty [  ("printf", Num);
+	                                                  ("printb", Bool);
+	                                                  ("print", String) ]
+	in
 
-let check (functions, statements) =
+	(* Define the global variable table. *)
+  	let variable_table = {
+    	variables = StringMap.empty;
+    	parent = None;
+  	}
+  	in
 
-(* for printing out a list of the statements for debugging
-  let rec print_list = function
-    [] -> ()
-  | e::l -> Printf.printf "%s\n END\n" e ; print_list l
-  in
-  let s = List.map string_of_stmt statements
-  in
-  let () = print_list s
-  in
-*)
+  	(* Get a reference to the global table we just created.
+    We will pass this scope via reference through recursive calls
+    and mutate it when we need to add a new variable. *)
+  	let global_scope = ref variable_table
+  	in
 
+  	(* Find a variable, beginning in a given scope and searching upwards. *)
+  	let rec find_variable (scope: symbol_table ref) name =
+    	try StringMap.find name !scope.variables
+    	with Not_found ->
+      		match !scope.parent with
+          	  Some(parent) -> find_variable (ref parent) name
+        	| _ -> raise (E.UndefinedId(name))
+  	in
 
+  	(* Map a variable's name to its type in the symbol table. *)
+   	let add_variable (scope: symbol_table ref) t n =
+   		try let _ = StringMap.find n !scope.variables in raise (E.DuplicateVariable(n))
+   		with Not_found ->
+      	scope := {
+        	variables = StringMap.add n t !scope.variables;
+        	parent = !scope.parent;
+      	}
+  	in
 
-  (* Collect function declarations for built-in functions: no bodies *)
-  let built_in_decls =
-    let add_bind map (name, ty) = StringMap.add name {
-      typ = Void; fname = name;
-      formals = [(ty, "x")];
-      body = [] } map
-    (* need a list of built in functions to put here  *)
-    in List.fold_left add_bind StringMap.empty [ ("printf", Num);
-                                                  ("printb", Bool) ]
-      (* [ ("print", Int);
-			                         ("printb", Bool);
-			                         ("printf", Float);
-			                         ("printbig", Int) ] *)
-  in
-
-  (* Add function name to symbol table *)
-  let add_func map fd =
-    let built_in_err = "function " ^ fd.fname ^ " may not be defined"
-    and dup_err = "duplicate function " ^ fd.fname
-    and make_err er = raise (Failure er)
-    and n = fd.fname (* Name of the function *)
-    in match fd with (* No duplicate functions or redefinitions of built-ins *)
-         _ when StringMap.mem n built_in_decls -> make_err built_in_err
-       | _ when StringMap.mem n map -> make_err dup_err
-       | _ ->  StringMap.add n fd map
-  in
-
-  (* Collect all other function names into one symbol table *)
-  let function_decls = List.fold_left add_func built_in_decls functions
-  in
-
-  (* Return a function from our symbol table *)
-  let find_func s =
-    try StringMap.find s function_decls
-    with Not_found -> raise (Failure ("unrecognized function " ^ s))
-  in
-
-  let variable_table = {
-    variables = StringMap.empty;
-    parent = None;
-  }
-
-  in
-
-  let rec find_variable (scope: symbol_table) name =
-    try
-      StringMap.find name scope.variables
-    with Not_found ->
-      match scope.parent with
-          Some(parent) -> find_variable parent name
-        | _ -> raise Not_found
-  in
-  (* Raise an exception if the given rvalue type cannot be assigned to
+  	(* Raise an exception if the given rvalue type cannot be assigned to
      the given lvalue type *)
-  let check_assign lvaluet rvaluet err =
-     if lvaluet = rvaluet then lvaluet else raise (Failure err)
-  in
+  	let check_assign lvaluet rvaluet =
+    	if lvaluet = rvaluet then lvaluet
+    	else raise (E.InvalidAssignment)
+  	in
 
-  let rec convert_expr table exp = match exp with
+  	(* Convert an expr to a sexpr. *)
+  	let rec convert_expr scope exp = match exp with
       StringLiteral s -> (String, SStringLiteral s)
     | IntegerLiteral s -> (Num, SIntegerLiteral s)
     | FloatLiteral s -> (Num, SFloatLiteral s)
     | BoolLiteral s -> (Bool, SBoolLiteral s)
     | TableLiteral rows ->
       let check_row row =
-        List.map (convert_expr table) row
+        List.map (convert_expr scope) row
       in (Table, STableLiteral(List.map check_row rows))
-    | ListLiteral row -> (List, SListLiteral(List.map (convert_expr table) row))
+    | ListLiteral row -> (List, SListLiteral(List.map (convert_expr scope) row))
     | DictLiteral row ->
       let convert_pair (e1, e2) =
-        (convert_expr table e1, convert_expr table e2)
+        (convert_expr scope e1, convert_expr scope e2)
       in (Dict, SDictLiteral(List.map convert_pair row))
     | Binop(e1, op, e2) ->
-      let (t1, e1') = convert_expr table e1
-      and (t2, e2') = convert_expr table e2 in
+      let (t1, e1') = convert_expr scope e1
+      and (t2, e2') = convert_expr scope e2 in
       let same_type = t1 = t2 in
       let ty = match op with
           Add | Sub | Mult | Div | Mod when same_type && t1 = Num -> Num
@@ -108,210 +83,114 @@ let check (functions, statements) =
         | Less | Leq | Greater | Geq when same_type && t1 = Num -> Bool
         | And | Or | Xor when same_type && t1 = Bool -> Bool
         | Add when same_type && t1 = String -> String
-        | _ -> raise (Failure("illegal binary operator."))
+        | _ -> raise (E.InvalidBinaryOperation)
   	      (* Failure ("illegal binary operator " ^   <<<<< pretty print needed
                          string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
                          string_of_typ t2 ^ " in " ^ string_of_expr e)) *)
         in (ty, SBinop((t1, e1'), op, (t2, e2')))
     | Unop(op, e1) ->
-        let (t, e1') = convert_expr table e1 in
+        let (t, e1') = convert_expr scope e1 in
         let ty = match op with
           Neg when t = Num -> Num
         | Not when t = Bool -> Bool
-        | _ -> raise (
-            Failure("illegal unary operator.")
+        | _ -> raise (E.InvalidUnaryOperation)
             (* Failure ("illegal unary operator " ^  <<<<< need pretty print
             string_of_uop op ^ string_of_typ t ^
                      " in " ^ string_of_expr ex) *)
-          )
         in (ty, SUnop(op, (t, e1')))
     | Pop(id, op) ->
-      let t = find_variable table id in
+      let t = find_variable scope id in
       let ty = match op with
           Inc when t = Num -> Num
         | Dec when t = Num -> Num
-        | _ -> raise (
-            Failure("illegal use of pop operator.")
-          )
+        | _ -> raise (E.InvalidPostOperation)
       in (ty, SPop(id, op))
+    | Assign(id, e) ->
+        let lt = find_variable scope id
+        and (rt, e') = convert_expr scope e in
+        (check_assign lt rt, SAssign(id, (rt, e')))
+    | AssignOp(id, op, e) ->
+        let lt = find_variable scope id
+        and (rt, e') = convert_expr scope e in
+        let same_type = lt = rt in
+        let ty = match op with
+            Add | Sub | Mult | Div | Mod when same_type && lt = Num -> Num
+          | Add when same_type && lt = String -> String
+          | _ -> raise (E.InvalidAssignmentOperation(id))
+          in (ty, SAssignOp(id, op, (rt, e')))
+    | Noexpr -> (Void, SNoexpr)
+    | Id s -> (find_variable scope s, SId s)
     | Call(fname, args) ->
-        let fd = find_func fname in
+        let fd = StringMap.find fname built_in_decls in
         let param_length = List.length fd.formals in
         if List.length args != param_length then
           (* need pretty printing functions *)
           (* raise (Failure ("expecting " ^ string_of_int param_length ^
                                 " arguments in " ^ string_of_expr call)) *)
-          raise (Failure ("expecting a different number of arguments."))
+          raise (E.WrongNumberOfArguments)
         else let check_call (ft, _) e =
-          let (et, e') = convert_expr table e in
-          let err = "illegal argument found."
-          (* let err = "illegal argument found " ^ string_of_typ et ^
-            " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e *)
-          in (check_assign ft et err, e')
+          let (et, e') = convert_expr scope e
+          in (check_assign ft et, e')
         in
         let args' = List.map2 check_call fd.formals args
         in (fd.typ, SCall(fname, args'))
-    | Assign(id, e) ->
-        let lt = find_variable table id
-        and (rt, e') = convert_expr table e in
-        let err = "illegal assignment."
-        (* let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
-          string_of_typ rt ^ " in " ^ string_of_expr ex *)
-        in (check_assign lt rt err, SAssign(id, (rt, e')))
-    | AssignOp(id, op, e) ->
-        let lt = find_variable table id
-        and (rt, e') = convert_expr table e in
-        (* let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
-          string_of_typ rt ^ " in " ^ string_of_expr ex *)
-        let same_type = lt = rt in
-        let ty = match op with
-            Add | Sub | Mult | Div | Mod when same_type && lt = Num -> Num
-          | Add when same_type && lt = String -> String
-          | _ -> raise (Failure("illegal assignment."))
-          in (ty, SAssignOp(id, op, (rt, e')))
-    | Noexpr -> (Void, SNoexpr)
-    | Id s -> (find_variable table s, SId s)
   in
 
-  let convert_vardecl table (ty, id, e) =
-    let (e_ty, e') = convert_expr table e in
+  (* Convert a vardecl to an SStmtVDecl; add the variable and its type
+     to the symbol table. *)
+  let convert_vardecl scope (ty, id, e) =
+    let (e_ty, e') = convert_expr scope e in
     let same_type = ty = e_ty in
-    if same_type then SStmtVDecl(e_ty, id, (e_ty, e'))
+    if same_type then
+    let _ = add_variable scope ty id
+    in SStmtVDecl(e_ty, id, (e_ty, e'))
     (* TODO: fix to add better error message *)
-    else raise(Failure("Expected different type of expression."))
+    else raise(E.InvalidAssignment)
   in
 
-  let rec check_statement (scope: symbol_table) stmt = match stmt with
-  | Expr _ -> scope
-  | StmtVDecl (ty, id, _) ->
-    {
-      variables = StringMap.add id ty scope.variables;
-      parent = None;
-    }
+  let check_bool_expr scope e =
+    let (t', e') = convert_expr scope e
+    in if t' != Bool then raise (E.WrongType("bool")) else (t', e')
+  in
+
+  (* Convert a statement to an sstmt. *)
+  let rec convert_statement scope expr = match expr with
+    Expr e -> SExpr(convert_expr scope e)
+  | StmtVDecl(ty, id, exp) -> convert_vardecl scope (ty, id, exp) (* Returns a SStmtVDecl *)
   | Block sl ->
-      let rec check_statement_list = function
-          [Return _ as s] -> [check_statement scope s]
-        | Return _ :: _   -> raise (Failure "nothing may follow a return")
-        | Block sl :: ss  -> check_statement_list (sl @ ss) (* Flatten blocks *)
-        | s :: ss         -> (check_statement scope s) :: check_statement_list ss
-        | []              -> []
-      in let table_lst = check_statement_list sl
-      in if List.length table_lst > 0 then List.hd (List.rev (check_statement_list sl))
-      else scope
-  | If(_, b1, b2) ->
-    let scope2 = check_statement scope b1 in
-    check_statement scope2 b2
-  | For(_, _, _, _) -> scope
-  | ForDecl(_, _, _, _, _, _) -> scope
-  | ForEach(_, _, _) -> scope
-  | While(_, st) -> check_statement scope st
-  | Return _ ->  raise (
-      Failure("Cannot return unless inside a function.")
-    )
-  in
-
-  let variable_table = List.fold_left check_statement variable_table statements;
-  in
-
-  let check_bool_expr e =
-    let (t', e') = convert_expr variable_table e
-    and err = "expected Boolean expression."
-    (* and err = "expected Boolean expression in " ^ string_of_expr e *)
-    in if t' != Bool then raise (Failure err) else (t', e')
-  in
-
-
-  let rec convert_statement = function
-    Expr e -> SExpr(convert_expr variable_table e)
-  | StmtVDecl(ty, id, exp) -> convert_vardecl variable_table (ty, id, exp) (* Returns a SStmtVDecl *)
-  | Block sl ->
+      let new_scope = {
+              variables = StringMap.empty;
+              parent = Some(!scope);
+      }
+      in let new_scope_r = ref new_scope in
       let rec convert_statement_list = function
-          [Return _ as s] -> [convert_statement s]
-        | Return _ :: _   -> raise (Failure "nothing may follow a return")
+          [Return _ as s] -> [convert_statement new_scope_r s]
+        | Return _ :: _   -> raise (E.NothingAfterReturn)
         | Block sl :: ss  -> convert_statement_list (sl @ ss) (* Flatten blocks *)
-        | s :: ss         -> convert_statement s :: convert_statement_list ss
+        | s :: ss         -> convert_statement new_scope_r s :: convert_statement_list ss
         | []              -> []
-      in SBlock(convert_statement_list sl)
-  | If(p, b1, b2) -> SIf(check_bool_expr p, convert_statement b1, convert_statement b2)
+      in SBlock(List.rev (convert_statement_list (List.rev sl)))
+  | If(p, b1, b2) -> SIf(check_bool_expr scope p, convert_statement scope b1, convert_statement scope b2)
   | For(e1, e2, e3, st) ->
-    SFor(convert_expr variable_table e1, check_bool_expr e2, convert_expr variable_table e3, convert_statement st)
+    SFor(convert_expr scope e1, check_bool_expr scope e2, convert_expr scope e3, convert_statement scope st)
   | ForDecl(e1_ty, e1_id, e1_ex, e2, e3, st) ->
-      let (e_ty, e') = convert_expr variable_table e1_ex in
+      let (e_ty, e') = convert_expr scope e1_ex in
       let same_type = e1_ty = e_ty in
       if same_type then
-        SForDecl(e_ty, e1_id, (e_ty, e'), check_bool_expr e2, convert_expr variable_table e3, convert_statement st)
+        SForDecl(e_ty, e1_id, (e_ty, e'), check_bool_expr scope e2, convert_expr scope e3, convert_statement scope st)
         (* TODO: fix to add better error message *)
-        else raise(Failure("Expected different type of expression."))
+        else raise(E.InvalidAssignment)
   | ForEach(t, e1, e2) ->
-    SForEach(t, convert_expr variable_table e1, convert_expr variable_table e2)
+    SForEach(t, convert_expr scope e1, convert_expr scope e2)
   | While(e, st) ->
-    SWhile(convert_expr variable_table e, convert_statement st)
+    SWhile(convert_expr scope e, convert_statement scope st)
   | Return _ ->
-    raise (
-      Failure("Cannot return unless inside of a function.")
-    (*Failure ("return gives " ^ string_of_typ t ^ " expected " ^
-       string_of_typ func.typ ^ " in " ^ string_of_expr e) *)
-    )
+    raise (E.ReturnsOutsideFunction)
   in
 
-  let statements' = List.map convert_statement statements
+  let convert_statements statement =
+    convert_statement global_scope statement
   in
 
-  let check_function func =
-
-
-    (* Build local symbol table of variables for this function *)
-    let function_table = {
-      variables = StringMap.empty;
-      parent = None;
-    }
-    in
-
-    let function_table = List.fold_left check_statement function_table func.body;
-    in
-
-    let rec convert_func_statement = function
-      Expr e -> SExpr(convert_expr function_table e)
-    | StmtVDecl(ty, id, exp) -> convert_vardecl function_table (ty, id, exp) (* Returns a SStmtVDecl *)
-    | Block sl ->
-        let rec convert_statement_list = function
-            [Return _ as s] -> [convert_func_statement s]
-          | Return _ :: _   -> raise (Failure "nothing may follow a return")
-          | Block sl :: ss  -> convert_statement_list (sl @ ss) (* Flatten blocks *)
-          | s :: ss         -> convert_func_statement s :: convert_statement_list ss
-          | []              -> []
-        in SBlock(convert_statement_list sl)
-    | If(p, b1, b2) -> SIf(check_bool_expr p, convert_func_statement b1, convert_func_statement b2)
-    | For(e1, e2, e3, st) ->
-      SFor(convert_expr function_table e1, check_bool_expr e2, convert_expr function_table e3, convert_func_statement st)
-    | ForDecl(e1_ty, e1_id, e1_ex, e2, e3, st) ->
-        let (e_ty, e') = convert_expr function_table e1_ex in
-        let same_type = e1_ty = e_ty in
-        if same_type then
-          SForDecl(e_ty, e1_id, (e_ty, e'), check_bool_expr e2, convert_expr function_table e3, convert_func_statement st)
-          (* TODO: fix to add better error message *)
-          else raise(Failure("Expected different type of expression."))
-    | ForEach(t, e1, e2) ->
-      SForEach(t, convert_expr function_table e1, convert_expr function_table e2)
-    | While(e, st) ->
-      SWhile(convert_expr function_table e, convert_func_statement st)
-    | Return _ ->
-      raise (
-        Failure("Cannot return unless inside of a function.")
-      (*Failure ("return gives " ^ string_of_typ t ^ " expected " ^
-         string_of_typ func.typ ^ " in " ^ string_of_expr e) *)
-      )
-
-    (* Return a semantically-checked expression, i.e., with a type *)
-
-
-    in (* body of check_function *)
-    { styp = func.typ;
-      sfname = func.fname;
-      sformals = func.formals;
-      sbody = match convert_func_statement (Block func.body) with
-	SBlock(sl) -> sl
-      | _ -> let err = "internal error: block didn't become a block?"
-      in raise (Failure err)
-    }
-  in (List.map check_function functions, statements')
+  let statements' = List.map convert_statements (List.rev statements)
+in(built_in_decls, statements')

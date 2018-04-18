@@ -103,8 +103,8 @@ let rec string_of_expr = function
 
 let rec string_of_stmt = function
     Expr(expr) -> string_of_expr expr ^ ";\n";
-  | Block(l) -> String.concat "" (List.map string_of_stmt l) ^ "\n"
-  | StmtVDecl(t, n, e) -> string_of_typ t ^ " " ^ n ^ " = " ^ string_of_expr e
+  | Block(l) -> String.concat "\n" (List.map string_of_stmt l) ^ "\n"
+  | StmtVDecl(t, n, e) -> string_of_typ t ^ " " ^ n ^ " = " ^ string_of_expr e ^ ";"
   | Return(e) -> "return " ^ string_of_expr e
   | If(e, s1, s2) -> "if (" ^ string_of_expr e ^ ") {\n" ^ string_of_stmt s1 ^ "\n} else  {\n" ^ string_of_stmt s2 ^ "}\n"
   | For(e1, e2, e3, s) -> "for (" ^ string_of_expr e1 ^ "; " ^ string_of_expr e2 ^ "; " ^ string_of_expr e3 ^ ") {\n" ^ string_of_stmt s ^ "}\n"
