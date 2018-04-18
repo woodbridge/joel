@@ -4,6 +4,7 @@ open Ast
 open Sast
 
 module StringMap = Map.Make(String)
+module E = Exceptions
 
 let check (_, statements) =
 
@@ -37,22 +38,24 @@ let check (_, statements) =
     	with Not_found ->
       		match !scope.parent with
           	  Some(parent) -> find_variable (ref parent) name
-        	| _ -> print_string ("Semantic error: could not find " ^ name ^ "\n"); raise Not_found
+        	| _ -> raise (E.UndefinedId(name))
   	in
 
   	(* Map a variable's name to its type in the symbol table. *)
    	let add_variable (scope: symbol_table ref) t n = 
-      scope := {
-        variables = StringMap.add n t !scope.variables;
-        parent = !scope.parent;
-      }
+   		try let _ = StringMap.find n !scope.variables in raise (E.DuplicateVariable(n))
+   		with Not_found ->
+      	scope := {
+        	variables = StringMap.add n t !scope.variables;
+        	parent = !scope.parent;
+      	}
   	in
 
   	(* Raise an exception if the given rvalue type cannot be assigned to
      the given lvalue type *)
-  	let check_assign lvaluet rvaluet err =
+  	let check_assign lvaluet rvaluet =
     	if lvaluet = rvaluet then lvaluet 
-    	else let _ = print_string ("Semantic error: bad assign\n") in raise (Failure err)
+    	else raise (E.InvalidAssignment)
   	in
 
   	(* Convert an expr to a sexpr. *)
@@ -80,7 +83,7 @@ let check (_, statements) =
         | Less | Leq | Greater | Geq when same_type && t1 = Num -> Bool
         | And | Or | Xor when same_type && t1 = Bool -> Bool
         | Add when same_type && t1 = String -> String
-        | _ -> raise (Failure("illegal binary operator."))
+        | _ -> raise (E.InvalidBinaryOperation)
   	      (* Failure ("illegal binary operator " ^   <<<<< pretty print needed
                          string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
                          string_of_typ t2 ^ " in " ^ string_of_expr e)) *)
@@ -90,39 +93,30 @@ let check (_, statements) =
         let ty = match op with
           Neg when t = Num -> Num
         | Not when t = Bool -> Bool
-        | _ -> raise (
-            Failure("illegal unary operator.")
+        | _ -> raise (E.InvalidUnaryOperation)
             (* Failure ("illegal unary operator " ^  <<<<< need pretty print
             string_of_uop op ^ string_of_typ t ^
                      " in " ^ string_of_expr ex) *)
-          )
         in (ty, SUnop(op, (t, e1')))
     | Pop(id, op) ->
       let t = find_variable scope id in
       let ty = match op with
           Inc when t = Num -> Num
         | Dec when t = Num -> Num
-        | _ -> raise (
-            Failure("illegal postop.")
-          )
+        | _ -> raise (E.InvalidPostOperation)
       in (ty, SPop(id, op))
     | Assign(id, e) ->
         let lt = find_variable scope id
         and (rt, e') = convert_expr scope e in
-        let err = "illegal assignment."
-        (* let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
-          string_of_typ rt ^ " in " ^ string_of_expr ex *)
-        in (check_assign lt rt err, SAssign(id, (rt, e')))
+        (check_assign lt rt, SAssign(id, (rt, e')))
     | AssignOp(id, op, e) ->
         let lt = find_variable scope id
         and (rt, e') = convert_expr scope e in
-        (* let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
-          string_of_typ rt ^ " in " ^ string_of_expr ex *)
         let same_type = lt = rt in
         let ty = match op with
             Add | Sub | Mult | Div | Mod when same_type && lt = Num -> Num
           | Add when same_type && lt = String -> String
-          | _ -> raise (Failure("illegal assignment."))
+          | _ -> raise (E.InvalidAssignmentOperation(id))
           in (ty, SAssignOp(id, op, (rt, e')))
     | Noexpr -> (Void, SNoexpr)
     | Id s -> (find_variable scope s, SId s)
@@ -133,13 +127,10 @@ let check (_, statements) =
           (* need pretty printing functions *)
           (* raise (Failure ("expecting " ^ string_of_int param_length ^
                                 " arguments in " ^ string_of_expr call)) *)
-          raise (Failure ("expecting a different number of arguments."))
+          raise (E.WrongNumberOfArguments)
         else let check_call (ft, _) e =
-          let (et, e') = convert_expr scope e in
-          let err = "illegal argument found."
-          (* let err = "illegal argument found " ^ string_of_typ et ^
-            " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e *)
-          in (check_assign ft et err, e')
+          let (et, e') = convert_expr scope e
+          in (check_assign ft et, e')
         in
         let args' = List.map2 check_call fd.formals args
         in (fd.typ, SCall(fname, args'))
@@ -154,14 +145,12 @@ let check (_, statements) =
     let _ = add_variable scope ty id 
     in SStmtVDecl(e_ty, id, (e_ty, e'))
     (* TODO: fix to add better error message *)
-    else raise(Failure("Expected different type of expression."))
+    else raise(E.InvalidAssignment)
   in
 
   let check_bool_expr scope e =
     let (t', e') = convert_expr scope e
-    and err = "expected Boolean expression."
-    (* and err = "expected Boolean expression in " ^ string_of_expr e *)
-    in if t' != Bool then raise (Failure err) else (t', e')
+    in if t' != Bool then raise (E.WrongType("bool")) else (t', e')
   in
 
   (* Convert a statement to an sstmt. *)
@@ -176,7 +165,7 @@ let check (_, statements) =
       in let new_scope_r = ref new_scope in 
       let rec convert_statement_list = function
           [Return _ as s] -> [convert_statement new_scope_r s]
-        | Return _ :: _   -> raise (Failure "nothing may follow a return")
+        | Return _ :: _   -> raise (E.NothingAfterReturn)
         | Block sl :: ss  -> convert_statement_list (sl @ ss) (* Flatten blocks *)
         | s :: ss         -> convert_statement new_scope_r s :: convert_statement_list ss
         | []              -> []
@@ -190,17 +179,13 @@ let check (_, statements) =
       if same_type then
         SForDecl(e_ty, e1_id, (e_ty, e'), check_bool_expr scope e2, convert_expr scope e3, convert_statement scope st)
         (* TODO: fix to add better error message *)
-        else raise(Failure("Expected different type of expression."))
+        else raise(E.InvalidAssignment)
   | ForEach(t, e1, e2) ->
     SForEach(t, convert_expr scope e1, convert_expr scope e2)
   | While(e, st) ->
     SWhile(convert_expr scope e, convert_statement scope st)
   | Return _ ->
-    raise (
-      Failure("Cannot return unless inside of a function.")
-    (*Failure ("return gives " ^ string_of_typ t ^ " expected " ^
-       string_of_typ func.typ ^ " in " ^ string_of_expr e) *)
-    )
+    raise (E.ReturnsOutsideFunction)
   in
 
   let convert_statements statement =

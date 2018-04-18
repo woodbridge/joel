@@ -36,6 +36,7 @@ let trans (_, statements) =
   and i32_t      = L.i32_type     context (* int type (for returns) *)
   and i8_t       = L.i8_type      context (* pointer type *)
   and bool_t       = L.i1_type    context (* boolean type *)
+  and str_t  = L.pointer_type   (L.i8_type context) (* string type *)
   and void_t     = L.void_type    context (* void type *)
 
   (* Create an LLVM module - a container for our code *)
@@ -46,6 +47,7 @@ let trans (_, statements) =
       A.Num   -> num_t
     | A.Bool  -> bool_t
     | A.Void  -> void_t
+    | A.String -> str_t
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
 
@@ -128,7 +130,7 @@ let trans (_, statements) =
          and e1' = expr builder scope e1
          and e2' = expr builder scope e2 in
          if t = A.Num then (match op with
-          A.Add     -> L.build_fadd 
+            A.Add     -> L.build_fadd 
           | A.Sub     -> L.build_fsub
           | A.Mult    -> L.build_fmul 
           | A.Div     -> L.build_fdiv  (* Todo: modulo *)
@@ -138,9 +140,9 @@ let trans (_, statements) =
           | A.Leq     -> L.build_fcmp L.Fcmp.Ole
           | A.Greater -> L.build_fcmp L.Fcmp.Ogt
           | A.Geq     -> L.build_fcmp L.Fcmp.Oge
-          | _ -> raise (Failure ("Error: Not Yet Implemented"))
+          | _ -> raise (Failure ("Internal Error: bad numeric operation"))
            ) e1' e2' "tmp" builder
-         else (match op with
+         else if t = A.Bool then (match op with
             A.And -> L.build_and
           | A.Or      -> L.build_or
           | A.Equal   -> L.build_icmp L.Icmp.Eq
@@ -149,8 +151,13 @@ let trans (_, statements) =
           | A.Leq     -> L.build_icmp L.Icmp.Sle
           | A.Greater -> L.build_icmp L.Icmp.Sgt
           | A.Geq     -> L.build_icmp L.Icmp.Sge
-          | _ -> raise (Failure ("Error: Not Yet Implemented"))
+          | _ -> raise (Failure ("Internal Error: bad boolean operation"))
            ) e1' e2' "tmp" builder
+         (* else if t = A.String then 
+          in match op with
+            A.Add     -> L.build_global_stringptr (str1 ^ str2) "string" builder
+          | _ -> raise (Failure ("Internal Error: bad string operation")) *)
+         else raise (Failure ("Internal Error: bad binop"))
 
         | SCall ("printf", [e]) -> L.build_call printf_func [| float_format_str ; (expr builder scope e) |] "printf" builder
         | SCall("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder scope e) |] "printf" builder
