@@ -1,0 +1,6 @@
+bool truth = true;
+if(truth) {
+	print("You win!");
+} else {
+	print("You lose!");
+}

@@ -1,0 +1,6 @@
+num i = 1;
+
+while(i < 100) {
+	printf(i);
+	i += 10;
+}
