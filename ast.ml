@@ -89,9 +89,9 @@ let rec string_of_expr = function
   | FloatLiteral(l) -> l
   | StringLiteral(l) -> "\"" ^ l ^ "\""
   | BoolLiteral(l) -> string_of_bool l
-  | ListLiteral(l) -> "List"
-  | DictLiteral(l) -> "Dict"
-  | TableLiteral(l) -> "Table"
+  | ListLiteral(_) -> "List"
+  | DictLiteral(_) -> "Dict"
+  | TableLiteral(_) -> "Table"
   | Call(s, _) -> s ^ "()"
   | Id(s) -> s
   | Binop(e1, op, e2) -> string_of_expr e1 ^ " " ^ string_of_op op ^ " " ^ string_of_expr e2
