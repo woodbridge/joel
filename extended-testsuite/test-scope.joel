@@ -6,9 +6,10 @@ printf(b);
 
 if(true) {
 	a = 3;
-	num b = 4;
-
 	printf(a);
+
+
+	num b = 4;
 	printf(b);
 }
 
