@@ -15,7 +15,7 @@ http://llvm.moe/ocaml/
 (* We'll refer to Llvm and Ast constructs with module names *)
 module L = Llvm
 module A = Ast
-open Sast 
+open Sast
 
 module StringMap = Map.Make(String)
 
@@ -37,7 +37,9 @@ let trans (_, statements) =
   and i8_t       = L.i8_type      context (* pointer type *)
   and bool_t       = L.i1_type    context (* boolean type *)
   and str_t  = L.pointer_type   (L.i8_type context) (* string type *)
+  and list_t t l   = L.array_type t l
   and void_t     = L.void_type    context (* void type *)
+
 
   (* Create an LLVM module - a container for our code *)
   and the_module = L.create_module context "Joel" in
@@ -49,6 +51,7 @@ let trans (_, statements) =
     | A.Void  -> void_t
     | A.String -> str_t
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
+  and ltype_of_list t l = list_t t l
   in
 
   (* If a variable is declared but not assigned a value, give it a placeholder value
@@ -76,9 +79,9 @@ let trans (_, statements) =
 
   (* Add a "return 0" statement to the end of a function (used to terminate the main function) *)
   let make_return builder =
-    let t = L.build_ret (L.const_int i32_t 0) in 
+    let t = L.build_ret (L.const_int i32_t 0) in
       add_terminal builder t
-  in 
+  in
 
   (* Iterate through the list of semantically-checked statements, generating code for each one. *)
   let build_program_body statements =
@@ -92,16 +95,16 @@ let trans (_, statements) =
       let variable_table = {
         names = StringMap.empty;
         parent = None;
-      } 
+      }
 
       (* Get a reference to the global table we just created.
         We will pass this scope via reference through recursive calls
         and mutate it when we need to add a new variable. *)
-      in let global_scope = ref variable_table 
+      in let global_scope = ref variable_table
       in
 
       (* Find a variable, beginning in a given scope and searching upwards. *)
-      let rec find_variable (scope: var_table ref) name = 
+      let rec find_variable (scope: var_table ref) name =
       try StringMap.find name !scope.names
       with Not_found ->
         match !scope.parent with
@@ -109,18 +112,29 @@ let trans (_, statements) =
           | _ -> print_string ("Lookup error: " ^ name); raise Not_found
       in
 
+      let find_list_type l =
+        let (_, sexp) = List.hd l in
+        match sexp with
+          SIntegerLiteral _  -> ltype_of_typ (A.Num)
+        | SFloatLiteral _      -> ltype_of_typ (A.Num)
+        | SBoolLiteral _       -> ltype_of_typ (A.Bool)
+        | SStringLiteral _       -> ltype_of_typ (A.String)
+        | _                   -> raise (Failure("Unsupported list type."))
+      in
+
       (* Generate LLVM code for an expression; return its value *)
       let rec expr builder scope (t, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
+        | SListLiteral s -> L.const_array (find_list_type s) (Array.of_list (List.map (expr builder scope) s))
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
         | SId id -> L.build_load (find_variable scope id) id builder
         | SAssign (n, e) -> update_variable scope n e builder; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
         | SAssignOp (n, op, e) -> expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), op, e)))) (* expand expression - i.e. a += 1 becomes a = a + 1 *)
         | SPop (n, pop) -> let prev = expr builder scope (t, SId(n)) in (* expand expression - i.e. a++ becomes a = a + 1, and we return a's prev. value *)
           ignore(expr builder scope (t, SAssign(n, (t, SBinop((t, SId(n)), (
-            match pop with 
+            match pop with
               A.Inc -> A.Add
             | A.Dec -> A.Sub
           ), (t, SIntegerLiteral(1))))))); prev
@@ -130,9 +144,9 @@ let trans (_, statements) =
          and e1' = expr builder scope e1
          and e2' = expr builder scope e2 in
          if t = A.Num then (match op with
-            A.Add     -> L.build_fadd 
+            A.Add     -> L.build_fadd
           | A.Sub     -> L.build_fsub
-          | A.Mult    -> L.build_fmul 
+          | A.Mult    -> L.build_fmul
           | A.Div     -> L.build_fdiv  (* Todo: modulo *)
           | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
           | A.Neq     -> L.build_fcmp L.Fcmp.One
@@ -153,7 +167,7 @@ let trans (_, statements) =
           | A.Geq     -> L.build_icmp L.Icmp.Sge
           | _ -> raise (Failure ("Internal Error: bad boolean operation"))
            ) e1' e2' "tmp" builder
-         (* else if t = A.String then 
+         (* else if t = A.String then
           in match op with
             A.Add     -> L.build_global_stringptr (str1 ^ str2) "string" builder
           | _ -> raise (Failure ("Internal Error: bad string operation")) *)
@@ -163,16 +177,26 @@ let trans (_, statements) =
         | SCall("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder scope e) |] "printf" builder
         | SCall("print", [e]) -> L.build_call printf_func [| str_format_str ; (expr builder scope e) |] "printf" builder
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
-      
-      (* Construct code for a variable assigned in the given scope. 
-        Allocate on the stack, initialize its value, if appropriate, 
+
+      (* Construct code for a variable assigned in the given scope.
+        Allocate on the stack, initialize its value, if appropriate,
         and mutate the given map to remember its value. *)
-      and add_variable (scope: var_table ref) t n e builder = 
+      and add_variable (scope: var_table ref) t n e builder =
         let e' = let (_, ex) = e in match ex with
             SNoexpr -> get_init_noexpr t
           | _ -> expr builder scope e
         in L.set_value_name n e';
-        let l_var = L.build_alloca (ltype_of_typ t) n builder in
+        let (_, ex) = e in
+        let ltype = match t with
+            A.List ->
+            let l = match ex with
+                SListLiteral s -> s
+              | _              -> raise(Failure("Right side of assignment does not match declared type."))
+            in
+            ltype_of_list (find_list_type l) (List.length l)
+          | _ -> ltype_of_typ t
+        in
+        let l_var = L.build_alloca ltype n builder in
         ignore (L.build_store e' l_var builder);
         scope := {
           names = StringMap.add n l_var !scope.names;
@@ -184,7 +208,7 @@ let trans (_, statements) =
         new value, and mutate the given map to remember its value. *)
       and update_variable (scope: var_table ref) name e builder =
       try let e' = expr builder scope e in
-        let l_var = find_variable scope name 
+        let l_var = find_variable scope name
         in ignore (L.build_store e' l_var builder);
         scope := {
           names = StringMap.add name l_var !scope.names;
@@ -205,11 +229,11 @@ let trans (_, statements) =
               names = StringMap.empty;
               parent = Some(!scope);
             }
-            in let new_scope_r = ref new_scope in 
+            in let new_scope_r = ref new_scope in
             let build builder stmt = build_statement new_scope_r stmt builder
-            in List.fold_left build builder sl 
+            in List.fold_left build builder sl
 
-          | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e builder in builder 
+          | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e builder in builder
 
           | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder scope predicate in
@@ -240,14 +264,14 @@ let trans (_, statements) =
                   let bool_val = expr pred_builder scope predicate in
                     let body_bb = L.append_block context "while_body" the_function in
                       let while_builder = build_statement scope body (L.builder_at_end context body_bb) in
-                        let () = add_terminal while_builder (L.build_br pred_bb) in                      
+                        let () = add_terminal while_builder (L.build_br pred_bb) in
                     let merge_bb = L.append_block context "merge" the_function in
                     let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
                       L.builder_at_end context merge_bb
 
           | SFor(e1, e2, e3, body) -> build_statement scope
               ( SBlock [SExpr e1 ;
-                        SWhile(e2, SBlock[ body ; 
+                        SWhile(e2, SBlock[ body ;
                                            SExpr e3] ) ] ) builder
 
           | _ as t ->
