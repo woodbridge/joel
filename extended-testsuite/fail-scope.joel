@@ -1,0 +1,7 @@
+num a = 1;
+
+if(true) {
+	num b = 2;
+}
+
+printf(b);

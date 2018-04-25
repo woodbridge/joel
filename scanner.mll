@@ -17,8 +17,6 @@ rule token = parse
 | ';'      { SEMI }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
-| '<'	   { LPOINTY }
-| '>'	   { RPOINTY }
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '*'      { TIMES }
@@ -36,7 +34,7 @@ rule token = parse
 | "!="     { NEQ }
 | '<'      { LT }
 | "<="     { LEQ }
-| ">"      { GT }
+| '>'      { GT }
 | ">="     { GEQ }
 | '&'	   { AND }
 | '|'	   { OR }

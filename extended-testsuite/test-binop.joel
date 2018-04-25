@@ -1,0 +1,10 @@
+num a = 1 + 2;
+num b = 3 - 4;
+num c = a * b;
+num d = c / 2.5;
+
+
+printf(a);
+printf(b);
+printf(c);
+printf(d);
