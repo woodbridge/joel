@@ -152,7 +152,7 @@ typ:
 	NUM							  { Num 	  }
   | STRING          { String  }
   | BOOL            { Bool    }
-  | LIST typ        { List($2)}
+  | typ LIST        { List($1)}
   | DICT            { Dict    }
   | TABLE           { Table   }
   | VOID            { Void    }
