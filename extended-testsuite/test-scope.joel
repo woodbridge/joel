@@ -1,0 +1,17 @@
+num a = 1;
+num b = 2;
+
+printf(a);
+printf(b);
+
+if(true) {
+	a = 3;
+	printf(a);
+
+
+	num b = 4;
+	printf(b);
+}
+
+printf(a);
+printf(b);

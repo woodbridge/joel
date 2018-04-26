@@ -50,7 +50,7 @@ stmt_list:
 
 stmt:
   	expr SEMI 					                    { Expr $1	}
-  | vdecl                                   { StmtVDecl $1 }
+  | vdecl                                   { $1 }
   | RETURN expr_opt SEMI                    { Return $2             }
   | LBRACE stmt_list RBRACE                 { Block(List.rev $2)    }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
@@ -58,8 +58,8 @@ stmt:
   | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
                                             { For($3, $5, $7, $9)   }
 
-  | FOR LPAREN vdecl expr SEMI expr_opt RPAREN stmt
-                                            { ForDecl($3, $4, $6, $8)   }
+  | FOR LPAREN typ ID ASSIGN expr SEMI expr SEMI expr_opt RPAREN stmt
+                                            { ForDecl($3, $4, $6, $8, $10, $12)   }
 
   | FOREACH LPAREN typ expr IN expr RPAREN stmt
                                             { ForEach($3, $4, $6)  }
@@ -96,10 +96,10 @@ expr:
   | ID TIMESASSIGN expr   { AssignOp($1, Mult, $3)  }
   | ID DIVIDEASSIGN expr  { AssignOp($1, Div, $3)   }
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
-  | ID LPAREN args_opt RPAREN 
+  | ID LPAREN args_opt RPAREN
                           { Call($1, $3)        }
   | LPAREN expr RPAREN    { $2                      }
-  | LPOINTY table_literal RPOINTY 
+  | LT table_literal GT
                           { TableLiteral(List.rev $2) }
 
 primitives:
@@ -108,9 +108,9 @@ primitives:
   | STRING_LIT            { StringLiteral($1) }
   | TRUE                  { BoolLiteral(true)       }
   | FALSE                 { BoolLiteral(false)      }
-  | LSQBRACE list_literal RSQBRACE 
+  | LSQBRACE list_literal RSQBRACE
                           { ListLiteral(List.rev $2) }
-  | LSQBRACE dict_literal RSQBRACE 
+  | LSQBRACE dict_literal RSQBRACE
                           { DictLiteral(List.rev $2) }
 
 list_literal:
@@ -126,7 +126,7 @@ dict_literal:
 
 table_literal:
     list_literal                  { [$1]      }
-  | table_literal SEMI list_literal  
+  | table_literal SEMI list_literal
                                   { $3 :: $1  }
 
 fdecl:
@@ -145,17 +145,17 @@ formal_list:
   | formal_list COMMA typ ID      { ($3,$4) :: $1 }
 
 vdecl:
-	  typ ID SEMI					          { VarDecl($1, $2, Noexpr)	}
-	| typ ID ASSIGN expr SEMI 	    { VarDecl($1, $2, $4)		  }
+	  typ ID SEMI					          { StmtVDecl($1, $2, Noexpr)	}
+	| typ ID ASSIGN expr SEMI 	    { StmtVDecl($1, $2, $4)		  }
 
 typ:
 	NUM							  { Num 	  }
   | STRING          { String  }
   | BOOL            { Bool    }
-  | LIST            { List    }
+  | typ LIST        { List($1)}
   | DICT            { Dict    }
   | TABLE           { Table   }
-  | VOID            { Void }
+  | VOID            { Void    }
 
 args_opt:
     /* nothing */ { [] }

@@ -1,0 +1,9 @@
+bool truth = true;
+bool lie = false;
+
+if(truth | lie) {
+	print("The truth is out there.");
+	if(truth & lie) {
+		print("Just kidding.");
+	}
+}
