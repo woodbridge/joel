@@ -22,7 +22,7 @@ module StringMap = Map.Make(String)
 (* Data structure to represent the current scope and its parent. *)
 type var_table = {
   names: L.llvalue StringMap.t; (* Names bound in current block *)
-  parent: var_table option; (* Enclosing scope *)
+  parent: var_table ref option; (* Enclosing scope *)
 }
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
@@ -35,9 +35,9 @@ let trans (_, statements) =
   let num_t      = L.double_type  context (* num type *)
   and i32_t      = L.i32_type     context (* int type (for returns) *)
   and i8_t       = L.i8_type      context (* pointer type *)
-  and bool_t       = L.i1_type    context (* boolean type *)
-  and str_t  = L.pointer_type   (L.i8_type context) (* string type *)
-  and list_t t l   = L.array_type t l
+  and bool_t     = L.i1_type      context (* boolean type *)
+  and str_t      = L.pointer_type (L.i8_type context) (* string type *)
+  and list_t t l = L.array_type t l
   and void_t     = L.void_type    context (* void type *)
 
 
@@ -108,7 +108,7 @@ let trans (_, statements) =
       try StringMap.find name !scope.names
       with Not_found ->
         match !scope.parent with
-            Some(parent) -> find_variable (ref parent) name
+            Some(parent) -> find_variable (parent) name
           | _ -> print_string ("Lookup error: " ^ name); raise Not_found
       in
 
@@ -218,7 +218,7 @@ let trans (_, statements) =
         }
       with Not_found -> (* If variable is not in this scope, check the parent scope *)
         match !scope.parent with
-            Some(parent) -> ignore(find_variable (ref parent) name); ()
+            Some(parent) -> ignore(find_variable (parent) name); ()
           | _ -> print_string ("Update error: " ^ name); raise Not_found
       in
 
@@ -229,7 +229,7 @@ let trans (_, statements) =
           | SBlock sl ->
             let new_scope = {
               names = StringMap.empty;
-              parent = Some(!scope);
+              parent = Some(scope);
             }
             in let new_scope_r = ref new_scope in
             let build builder stmt = build_statement new_scope_r stmt builder

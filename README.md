@@ -40,7 +40,7 @@ To run the script to compile the compiler, simply run ``python3 build.py``. If a
 ##### Positive Tests
 1. ``test-and-or.joel``: Tests boolean and (&) and or (|) operators.
 2. ``test-while.joel``: Tests the while loop. 
-3. ``test-incr-assign.joel``: Tests the increment-assignment (in this case, the +=) operator.
+3. ``test-incr-assign.joel``: Tests the increment-assignment operator (+=).
 4. ``test-string.joel``: Tests string literals.
 5. ``test-scope.joel``: Tests scoping rules - both global and local variables, which may be declared anywhere within the scope (not just at the beginning of the scope) and re-defined.
 6. ``test-binop.joel``: Tests binary operations (+, -, *, /).
