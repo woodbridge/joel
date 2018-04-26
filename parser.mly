@@ -96,10 +96,10 @@ expr:
   | ID TIMESASSIGN expr   { AssignOp($1, Mult, $3)  }
   | ID DIVIDEASSIGN expr  { AssignOp($1, Div, $3)   }
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
-  | ID LPAREN args_opt RPAREN 
+  | ID LPAREN args_opt RPAREN
                           { Call($1, $3)        }
   | LPAREN expr RPAREN    { $2                      }
-  | LT table_literal GT 
+  | LT table_literal GT
                           { TableLiteral(List.rev $2) }
 
 primitives:
@@ -108,9 +108,9 @@ primitives:
   | STRING_LIT            { StringLiteral($1) }
   | TRUE                  { BoolLiteral(true)       }
   | FALSE                 { BoolLiteral(false)      }
-  | LSQBRACE list_literal RSQBRACE 
+  | LSQBRACE list_literal RSQBRACE
                           { ListLiteral(List.rev $2) }
-  | LSQBRACE dict_literal RSQBRACE 
+  | LSQBRACE dict_literal RSQBRACE
                           { DictLiteral(List.rev $2) }
 
 list_literal:
@@ -126,7 +126,7 @@ dict_literal:
 
 table_literal:
     list_literal                  { [$1]      }
-  | table_literal SEMI list_literal  
+  | table_literal SEMI list_literal
                                   { $3 :: $1  }
 
 fdecl:
@@ -152,10 +152,10 @@ typ:
 	NUM							  { Num 	  }
   | STRING          { String  }
   | BOOL            { Bool    }
-  | LIST            { List    }
+  | typ LIST        { List($1)}
   | DICT            { Dict    }
   | TABLE           { Table   }
-  | VOID            { Void }
+  | VOID            { Void    }
 
 args_opt:
     /* nothing */ { [] }

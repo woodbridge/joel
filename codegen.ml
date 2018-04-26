@@ -188,12 +188,14 @@ let trans (_, statements) =
         in L.set_value_name n e';
         let (_, ex) = e in
         let ltype = match t with
-            A.List ->
-            let l = match ex with
-                SListLiteral s -> s
-              | _              -> raise(Failure("Right side of assignment does not match declared type."))
-            in
-            ltype_of_list (find_list_type l) (List.length l)
+            A.List(ty) ->
+              let l = match ex with
+                  SListLiteral s -> s
+                | _              -> raise(Failure("Right side of assignment does not match declared type."))
+              and list_ty = ty
+              in
+              (* ltype_of_list (find_list_type l) (List.length l) *)
+              ltype_of_list (ltype_of_typ list_ty) (List.length l)
           | _ -> ltype_of_typ t
         in
         let l_var = L.build_alloca ltype n builder in

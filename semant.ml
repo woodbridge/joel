@@ -68,7 +68,12 @@ let check (_, statements) =
       let check_row row =
         List.map (convert_expr scope) row
       in (Table, STableLiteral(List.map check_row rows))
-    | ListLiteral row -> (List, SListLiteral(List.map (convert_expr scope) row))
+    | ListLiteral row ->
+      let (ty, _) =
+        if List.length row > 0 then convert_expr scope (List.hd row)
+        else (Void, SStringLiteral "")
+      in
+      (List(ty), SListLiteral(List.map (convert_expr scope) row))
     | DictLiteral row ->
       let convert_pair (e1, e2) =
         (convert_expr scope e1, convert_expr scope e2)
@@ -145,7 +150,15 @@ let check (_, statements) =
     let _ = add_variable scope ty id
     in SStmtVDecl(e_ty, id, (e_ty, e'))
     (* TODO: fix to add better error message *)
-    else raise(E.InvalidAssignment)
+    else
+      match e_ty with
+        List(t) ->
+        if t = Void &&
+           (ty = List(Num) || ty = List(Bool) || ty = List(Dict)
+            || ty = List(String) || ty = List(Table))
+          then SStmtVDecl(ty, id, (ty, e'))
+          else raise(E.InvalidAssignment)
+      | _ -> raise(E.InvalidAssignment)
   in
 
   let check_bool_expr scope e =
