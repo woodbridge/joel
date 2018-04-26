@@ -7,7 +7,7 @@ type uop = Not | Neg
 
 type pop = Inc | Dec
 
-type typ = Num | String | Bool | List | Dict | Table | Void
+type typ = Num | String | Bool | List of typ | Dict | Table | Void
 
 type bind = typ * string
 
@@ -79,10 +79,11 @@ let string_of_typ = function
     Num -> "num"
   | String -> "string"
   | Bool -> "bool"
-  | List -> "list"
+  | List(_) -> "list"
   | Dict -> "dict"
   | Table -> "table"
   | Void -> "void"
+
 
 let rec string_of_expr = function
     IntegerLiteral(l) -> string_of_int l
