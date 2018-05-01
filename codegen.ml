@@ -54,6 +54,29 @@ let trans (_, statements) =
   and ltype_of_list t l = list_t t l
   in
 
+  let list_item_struct = L.named_struct_type context "list_item"
+  in
+
+  let list_item_pointer =
+    L.pointer_type list_item_struct
+  in
+
+  let pack_struct struct_type arg_list =
+    L.struct_set_body struct_type (Array.of_list arg_list) true
+  in
+
+
+  let list_item ty e =
+    let () =
+      pack_struct list_item_struct [ltype_of_typ ty; list_item_pointer]
+    in
+
+    L.const_named_struct list_item_struct (Array.of_list [e; L.const_pointer_null list_item_struct])
+  in
+
+
+
+
   (* If a variable is declared but not assigned a value, give it a placeholder value
     according to its type so we can store it in the symbol table. *)
   let get_init_noexpr = function
@@ -127,7 +150,13 @@ let trans (_, statements) =
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
-        | SListLiteral s -> L.const_array (find_list_type s) (Array.of_list (List.map (expr builder scope) s))
+        | SListLiteral s ->
+          let inner_ty = match t with
+              A.List(ty) -> ty
+            | ty -> ty
+          in
+          list_item inner_ty (expr builder scope (List.hd s))
+        (* | SListLiteral s -> L.const_array (find_list_type s) (Array.of_list (List.map (expr builder scope) s)) *)
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
         | SId id -> L.build_load (find_variable scope id) id builder
         | SAssign (n, e) -> update_variable scope n e builder; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
@@ -188,14 +217,7 @@ let trans (_, statements) =
         in L.set_value_name n e';
         let (_, ex) = e in
         let ltype = match t with
-            A.List(ty) ->
-              let l = match ex with
-                  SListLiteral s -> s
-                | _              -> raise(Failure("Right side of assignment does not match declared type."))
-              and list_ty = ty
-              in
-              (* ltype_of_list (find_list_type l) (List.length l) *)
-              ltype_of_list (ltype_of_typ list_ty) (List.length l)
+            A.List(_) -> list_item_struct
           | _ -> ltype_of_typ t
         in
         let l_var = L.build_alloca ltype n builder in
