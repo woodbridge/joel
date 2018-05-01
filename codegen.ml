@@ -112,7 +112,7 @@ let trans (_, statements) =
           | _ -> print_string ("Lookup error: " ^ name); raise Not_found
       in
 
-      let find_list_type l =
+      (* let find_list_type l =
         let (_, sexp) = List.hd l in
         match sexp with
           SIntegerLiteral _  -> ltype_of_typ (A.Num)
@@ -120,14 +120,18 @@ let trans (_, statements) =
         | SBoolLiteral _       -> ltype_of_typ (A.Bool)
         | SStringLiteral _       -> ltype_of_typ (A.String)
         | _                   -> raise (Failure("Unsupported list type."))
-      in
+      in *)
 
       (* Generate LLVM code for an expression; return its value *)
       let rec expr builder scope (t, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
-        | SListLiteral s -> L.const_array (find_list_type s) (Array.of_list (List.map (expr builder scope) s))
+        | SListLiteral s ->
+          let list_type = match t with
+              A.List(list_ty) -> ltype_of_typ list_ty
+            | _ -> raise(Failure("invalid list type."))
+          in L.const_array (list_t list_type (List.length s)) (Array.of_list (List.map (expr builder scope) s))
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
         | SId id -> L.build_load (find_variable scope id) id builder
         | SAssign (n, e) -> update_variable scope n e builder; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
