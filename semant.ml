@@ -78,6 +78,17 @@ let check (_, statements) =
       let convert_pair (e1, e2) =
         (convert_expr scope e1, convert_expr scope e2)
       in (Dict, SDictLiteral(List.map convert_pair row))
+    | ListAccess(id, e2) ->
+      let t1 = find_variable scope id
+      and (t2, e2') = convert_expr scope e2 in
+      let inner_ty = match t1 with
+          List(ty) -> ty
+        | _ -> raise( E.NonListAccess )
+      in
+      let valid_index = t2 = Num in
+      if valid_index then
+        (inner_ty, SListAccess(id, (t2, e2')))
+      else raise(E.NonNumIndex)
     | Binop(e1, op, e2) ->
       let (t1, e1') = convert_expr scope e1
       and (t2, e2') = convert_expr scope e2 in
@@ -170,6 +181,25 @@ let check (_, statements) =
   let rec convert_statement scope expr = match expr with
     Expr e -> SExpr(convert_expr scope e)
   | StmtVDecl(ty, id, exp) -> convert_vardecl scope (ty, id, exp) (* Returns a SStmtVDecl *)
+  | Append(e1, e2) ->
+    let (t1, e1') = convert_expr scope e1
+    and (t2, e2') = convert_expr scope e2 in
+    let inner_ty = match t1 with
+        List(ty) -> ty
+      | _ -> raise(E.InvalidArgument)
+    in let same_type = inner_ty = t2 in
+    if same_type then SAppend((t1, e1'), (t2, e2'))
+    else raise E.InvalidArgument
+  | Alter(e1, e2, e3) ->
+    let (t1, e1') = convert_expr scope e1
+    and (t2, e2') = convert_expr scope e2
+    and (t3, e3') = convert_expr scope e3 in
+    let inner_ty = match t1 with
+        List(ty) -> ty
+      | _ -> raise(E.InvalidArgument)
+    in let is_valid = inner_ty = t2 && t3 = Num in
+    if is_valid then SAlter((t1, e1'), (t2, e2'), (t3, e3'))
+    else raise E.InvalidArgument
   | Block sl ->
       let new_scope = {
               variables = StringMap.empty;

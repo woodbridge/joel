@@ -9,7 +9,7 @@ open Ast
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
-%token RETURN IF ELSE FOR FOREACH IN WHILE INT BOOL FLOAT VOID
+%token RETURN IF ELSE FOR FOREACH IN WHILE INT BOOL FLOAT VOID APPEND ALTER
 %token AND OR XOR NOT
 
 
@@ -51,6 +51,10 @@ stmt_list:
 stmt:
   	expr SEMI 					                    { Expr $1	}
   | vdecl                                   { $1 }
+  | APPEND LPAREN expr COMMA expr RPAREN SEMI
+                                            { Append($3, $5)        }
+  | ALTER LPAREN expr COMMA expr COMMA expr RPAREN SEMI
+                                            { Alter($3, $5, $7)        }
   | RETURN expr_opt SEMI                    { Return $2             }
   | LBRACE stmt_list RBRACE                 { Block(List.rev $2)    }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
@@ -96,6 +100,8 @@ expr:
   | ID TIMESASSIGN expr   { AssignOp($1, Mult, $3)  }
   | ID DIVIDEASSIGN expr  { AssignOp($1, Div, $3)   }
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
+  | ID LSQBRACE expr RSQBRACE
+                          { ListAccess($1, $3)   }
   | ID LPAREN args_opt RPAREN
                           { Call($1, $3)        }
   | LPAREN expr RPAREN    { $2                      }

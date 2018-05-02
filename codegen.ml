@@ -18,6 +18,7 @@ module A = Ast
 open Sast
 
 module StringMap = Map.Make(String)
+module E = Exceptions
 
 (* Data structure to represent the current scope and its parent. *)
 type var_table = {
@@ -54,33 +55,18 @@ let trans (_, statements) =
 
   let list_item_struct = L.named_struct_type context "list_item"
   in
-
   let list_item_pointer =
     L.pointer_type list_item_struct
   in
-
   let pack_struct struct_type arg_list =
     L.struct_set_body struct_type (Array.of_list arg_list) true
   in
-
-
   let list_end_item ty e1 =
     let () =
       pack_struct list_item_struct [ltype_of_typ ty; list_item_pointer]
     in
-
     L.const_named_struct list_item_struct (Array.of_list [e1; L.const_pointer_null (L.pointer_type list_item_struct)])
   in
-
-  let list_item ty e1 e2 =
-    let () =
-      pack_struct list_item_struct [ltype_of_typ ty; list_item_pointer]
-    in
-
-    L.const_named_struct list_item_struct (Array.of_list [e1; e2])
-  in
-
-
 
   (* If a variable is declared but not assigned a value, give it a placeholder value
     according to its type so we can store it in the symbol table. *)
@@ -151,20 +137,7 @@ let trans (_, statements) =
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
-        | SListLiteral s ->
-          let inner_ty = match t with
-              A.List(ty) -> ty
-            | ty -> ty
-          in
-          let rec build_list_expr l = match l with
-              [] -> L.const_pointer_null (L.pointer_type list_item_struct)
-            | [exp] -> list_end_item inner_ty (expr builder scope exp)
-            | exp :: exps -> list_item inner_ty (expr builder scope exp) (build_list_expr exps)
-          in
-          build_list_expr s
-
-          (* list_item inner_ty (expr builder scope (List.hd s)) *)
-        (* | SListLiteral s -> L.const_array (find_list_type s) (Array.of_list (List.map (expr builder scope) s)) *)
+        | SListLiteral _ -> raise(E.InnerCompilerError)
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
         | SId id -> L.build_load (find_variable scope id) id builder
         | SAssign (n, e) -> update_variable scope n e builder; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
@@ -248,6 +221,7 @@ let trans (_, statements) =
           names = StringMap.add n head !scope.names;
           parent = !scope.parent;
         }
+      
 
       (* Construct code for a variable assigned in the given scope.
         Allocate on the stack, initialize its value, if appropriate,

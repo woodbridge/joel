@@ -19,6 +19,7 @@ type expr =
   | ListLiteral of expr list
   | DictLiteral of (expr * expr) list
   | TableLiteral of (expr list) list
+  | ListAccess of string * expr
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
@@ -31,6 +32,8 @@ type expr =
 type stmt =
     Block of stmt list
   | Expr of expr
+  | Append of expr * expr
+  | Alter of expr * expr * expr
   | StmtVDecl of typ * string * expr
   | Return of expr
   | If of expr * stmt * stmt
@@ -91,6 +94,7 @@ let rec string_of_expr = function
   | StringLiteral(l) -> "\"" ^ l ^ "\""
   | BoolLiteral(l) -> string_of_bool l
   | ListLiteral(_) -> "List"
+  | ListAccess(_, _) -> "List Access"
   | DictLiteral(_) -> "Dict"
   | TableLiteral(_) -> "Table"
   | Call(s, _) -> s ^ "()"
