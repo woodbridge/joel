@@ -37,7 +37,6 @@ let trans (_, statements) =
   and i8_t       = L.i8_type      context (* pointer type *)
   and bool_t     = L.i1_type      context (* boolean type *)
   and str_t      = L.pointer_type (L.i8_type context) (* string type *)
-  and list_t t l = L.array_type t l
   and void_t     = L.void_type    context (* void type *)
 
 
@@ -51,7 +50,6 @@ let trans (_, statements) =
     | A.Void  -> void_t
     | A.String -> str_t
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
-  and ltype_of_list t l = list_t t l
   in
 
   let list_item_struct = L.named_struct_type context "list_item"
@@ -142,17 +140,7 @@ let trans (_, statements) =
           | _ -> print_string ("Lookup error: " ^ name); raise Not_found
       in
 
-      let find_list_type l =
-        let (_, sexp) = List.hd l in
-        match sexp with
-          SIntegerLiteral _  -> ltype_of_typ (A.Num)
-        | SFloatLiteral _      -> ltype_of_typ (A.Num)
-        | SBoolLiteral _       -> ltype_of_typ (A.Bool)
-        | SStringLiteral _       -> ltype_of_typ (A.String)
-        | _                   -> raise (Failure("Unsupported list type."))
-      in
-
-      let raw_list (t, e) = match e with
+      let raw_list (_, e) = match e with
           SListLiteral s -> s
         | _ -> raise(Failure("invalide argument passed."))
       in
@@ -228,18 +216,42 @@ let trans (_, statements) =
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
 
       and add_list_variable (scope: var_table ref) t n e builder =
-        let end_item = list_end_item t (expr builder scope (List.hd (List.rev (raw_list e)))) in
-        let temp_var = L.build_alloca list_item_struct "TEMP" builder in
-        let front_item = list_item t (expr builder scope (List.hd (raw_list e))) end_item in
-        let () =
-          ignore(L.build_store end_item temp_var builder)
+        let rec remove_last_item l =
+          match l with
+            [] -> []
+          | [_] -> []
+          | h :: t -> h :: remove_last_item t
         in
-        let head_var = L.build_alloca list_item_struct n builder in
+        let build_link temp_var b =
+          (* let end_item = list_end_item t (expr builder scope a) in *)
+          let front_item = list_end_item t (expr builder scope b) in
+          (* let temp_var = L.build_alloca list_item_struct "TEMP" builder in *)
+          let head_var = L.build_alloca list_item_struct n builder in
+          let () =
+            ignore(L.build_store front_item head_var builder)
+          in
+          let head_pointer =
+            L.build_struct_gep head_var 1 "TEMP" builder
+          in
+          let () =
+            ignore(L.build_store temp_var head_pointer builder )
+          in
+          head_var
+        in
+        let stripped_list = raw_list e
+        in
+        let end_expr =
+          list_end_item t (expr builder scope (List.hd (List.rev stripped_list)))
+        in
+        let end_var = L.build_alloca list_item_struct "TEMP" builder in
         let () =
-          ignore(L.build_store front_item head_var builder)
+          ignore(L.build_store end_expr end_var builder)
+        in
+        (* let head = build_link end_var (List.hd stripped_list) *)
+        let head = List.fold_left build_link end_var (List.rev (remove_last_item stripped_list))
         in
         scope := {
-          names = StringMap.add n head_var !scope.names;
+          names = StringMap.add n head !scope.names;
           parent = !scope.parent;
         }
 
@@ -247,16 +259,14 @@ let trans (_, statements) =
         Allocate on the stack, initialize its value, if appropriate,
         and mutate the given map to remember its value. *)
       and add_variable (scope: var_table ref) t n e builder = match t with
+        (* need a specific method to handle all the allocations of a list *)
           A.List(ty) -> add_list_variable scope ty n e builder
         | _ ->
           let e' = let (_, ex) = e in match ex with
               SNoexpr -> get_init_noexpr t
             | _ -> expr builder scope e
           in L.set_value_name n e';
-          let (_, ex) = e in
-          let ltype = match t with
-              A.List(_) -> list_item_struct
-            | _ -> ltype_of_typ t
+          let ltype = ltype_of_typ t
           in
           let l_var = L.build_alloca ltype n builder in
           ignore (L.build_store e' l_var builder);
