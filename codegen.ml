@@ -66,14 +66,21 @@ let trans (_, statements) =
   in
 
 
-  let list_item ty e =
+  let list_end_item ty e1 =
     let () =
       pack_struct list_item_struct [ltype_of_typ ty; list_item_pointer]
     in
 
-    L.const_named_struct list_item_struct (Array.of_list [e; L.const_pointer_null list_item_struct])
+    L.const_named_struct list_item_struct (Array.of_list [e1; L.const_pointer_null (L.pointer_type list_item_struct)])
   in
 
+  let list_item ty e1 e2 =
+    let () =
+      pack_struct list_item_struct [ltype_of_typ ty; list_item_pointer]
+    in
+
+    L.const_named_struct list_item_struct (Array.of_list [e1; e2])
+  in
 
 
 
@@ -145,6 +152,12 @@ let trans (_, statements) =
         | _                   -> raise (Failure("Unsupported list type."))
       in
 
+      let raw_list (t, e) = match e with
+          SListLiteral s -> s
+        | _ -> raise(Failure("invalide argument passed."))
+      in
+
+
       (* Generate LLVM code for an expression; return its value *)
       let rec expr builder scope (t, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
@@ -155,7 +168,14 @@ let trans (_, statements) =
               A.List(ty) -> ty
             | ty -> ty
           in
-          list_item inner_ty (expr builder scope (List.hd s))
+          let rec build_list_expr l = match l with
+              [] -> L.const_pointer_null (L.pointer_type list_item_struct)
+            | [exp] -> list_end_item inner_ty (expr builder scope exp)
+            | exp :: exps -> list_item inner_ty (expr builder scope exp) (build_list_expr exps)
+          in
+          build_list_expr s
+
+          (* list_item inner_ty (expr builder scope (List.hd s)) *)
         (* | SListLiteral s -> L.const_array (find_list_type s) (Array.of_list (List.map (expr builder scope) s)) *)
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
         | SId id -> L.build_load (find_variable scope id) id builder
@@ -207,25 +227,43 @@ let trans (_, statements) =
         | SCall("print", [e]) -> L.build_call printf_func [| str_format_str ; (expr builder scope e) |] "printf" builder
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
 
+      and add_list_variable (scope: var_table ref) t n e builder =
+        let end_item = list_end_item t (expr builder scope (List.hd (List.rev (raw_list e)))) in
+        let temp_var = L.build_alloca list_item_struct "TEMP" builder in
+        let front_item = list_item t (expr builder scope (List.hd (raw_list e))) end_item in
+        let () =
+          ignore(L.build_store end_item temp_var builder)
+        in
+        let head_var = L.build_alloca list_item_struct n builder in
+        let () =
+          ignore(L.build_store front_item head_var builder)
+        in
+        scope := {
+          names = StringMap.add n head_var !scope.names;
+          parent = !scope.parent;
+        }
+
       (* Construct code for a variable assigned in the given scope.
         Allocate on the stack, initialize its value, if appropriate,
         and mutate the given map to remember its value. *)
-      and add_variable (scope: var_table ref) t n e builder =
-        let e' = let (_, ex) = e in match ex with
-            SNoexpr -> get_init_noexpr t
-          | _ -> expr builder scope e
-        in L.set_value_name n e';
-        let (_, ex) = e in
-        let ltype = match t with
-            A.List(_) -> list_item_struct
-          | _ -> ltype_of_typ t
-        in
-        let l_var = L.build_alloca ltype n builder in
-        ignore (L.build_store e' l_var builder);
-        scope := {
-          names = StringMap.add n l_var !scope.names;
-          parent = !scope.parent;
-        }
+      and add_variable (scope: var_table ref) t n e builder = match t with
+          A.List(ty) -> add_list_variable scope ty n e builder
+        | _ ->
+          let e' = let (_, ex) = e in match ex with
+              SNoexpr -> get_init_noexpr t
+            | _ -> expr builder scope e
+          in L.set_value_name n e';
+          let (_, ex) = e in
+          let ltype = match t with
+              A.List(_) -> list_item_struct
+            | _ -> ltype_of_typ t
+          in
+          let l_var = L.build_alloca ltype n builder in
+          ignore (L.build_store e' l_var builder);
+          scope := {
+            names = StringMap.add n l_var !scope.names;
+            parent = !scope.parent;
+          }
 
       (* Update a variable, beginning in the given scope.
         Bind the nearest occurrence of the variable to the given
