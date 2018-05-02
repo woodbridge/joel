@@ -216,12 +216,6 @@ let trans (_, statements) =
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
 
       and add_list_variable (scope: var_table ref) t n e builder =
-        let rec remove_last_item l =
-          match l with
-            [] -> []
-          | [_] -> []
-          | h :: t -> h :: remove_last_item t
-        in
         let build_link temp_var b =
           (* let end_item = list_end_item t (expr builder scope a) in *)
           let front_item = list_end_item t (expr builder scope b) in
@@ -240,15 +234,15 @@ let trans (_, statements) =
         in
         let stripped_list = raw_list e
         in
-        let end_expr =
-          list_end_item t (expr builder scope (List.hd (List.rev stripped_list)))
+        (* build an empty item to terminate the list *)
+        let empty_expr =
+          list_end_item t (L.const_null (ltype_of_typ t))
         in
-        let end_var = L.build_alloca list_item_struct "TEMP" builder in
+        let empty_var = L.build_alloca list_item_struct "TEMP" builder in
         let () =
-          ignore(L.build_store end_expr end_var builder)
+          ignore(L.build_store empty_expr empty_var builder)
         in
-        (* let head = build_link end_var (List.hd stripped_list) *)
-        let head = List.fold_left build_link end_var (List.rev (remove_last_item stripped_list))
+        let head = List.fold_left build_link empty_var (List.rev stripped_list)
         in
         scope := {
           names = StringMap.add n head !scope.names;
