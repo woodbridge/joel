@@ -116,6 +116,7 @@ primitives:
 list_literal:
     primitives                    { [$1]      }
   | list_literal COMMA primitives { $3 :: $1  }
+  | /* nothing */                 { []        }
 
 key_val:
     primitives COLON primitives   { ($1,$3)   }
