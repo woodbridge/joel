@@ -18,7 +18,7 @@ and sx =
   | SListLiteral of sexpr list
   | SDictLiteral of (sexpr * sexpr) list
   | STableLiteral of (sexpr list) list
-  | SListAccess of string * sexpr
+  | SListAccess of sexpr * sexpr
   | SId of string
   | SBinop of sexpr * op * sexpr
   | SUnop of uop * sexpr

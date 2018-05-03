@@ -78,16 +78,19 @@ let check (_, statements) =
       let convert_pair (e1, e2) =
         (convert_expr scope e1, convert_expr scope e2)
       in (Dict, SDictLiteral(List.map convert_pair row))
-    | ListAccess(id, e2) ->
-      let t1 = find_variable scope id
+    | ListAccess(e1, e2) ->
+      let (t1, e1') = convert_expr scope e1
       and (t2, e2') = convert_expr scope e2 in
       let inner_ty = match t1 with
           List(ty) -> ty
         | _ -> raise( E.NonListAccess )
       in
-      let valid_index = t2 = Num in
-      if valid_index then
-        (inner_ty, SListAccess(id, (t2, e2')))
+      let is_valid = t2 = Num && (t1 = List(Num)
+                                  || t1 = List(Bool)
+                                  || t1 = List(String))
+      in
+      if is_valid then
+        (inner_ty, SListAccess((t1, e1'), (t2, e2')))
       else raise(E.NonNumIndex)
     | Binop(e1, op, e2) ->
       let (t1, e1') = convert_expr scope e1

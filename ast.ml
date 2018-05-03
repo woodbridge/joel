@@ -19,7 +19,7 @@ type expr =
   | ListLiteral of expr list
   | DictLiteral of (expr * expr) list
   | TableLiteral of (expr list) list
-  | ListAccess of string * expr
+  | ListAccess of expr * expr
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr

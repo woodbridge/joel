@@ -14,6 +14,7 @@ http://llvm.moe/ocaml/
 
 (* We'll refer to Llvm and Ast constructs with module names *)
 module L = Llvm
+module I64 = Int64
 module A = Ast
 open Sast
 
@@ -44,20 +45,22 @@ let trans (_, statements) =
   (* Create an LLVM module - a container for our code *)
   and the_module = L.create_module context "Joel" in
 
+  let list_item_struct = L.named_struct_type context "list_item"
+  in
+  let list_item_pointer =
+    L.pointer_type list_item_struct
+  in
+
   (* Convert Joel types to LLVM types *)
   let ltype_of_typ = function
       A.Num   -> num_t
     | A.Bool  -> bool_t
     | A.Void  -> void_t
     | A.String -> str_t
+    | A.List(_) -> list_item_pointer
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
 
-  let list_item_struct = L.named_struct_type context "list_item"
-  in
-  let list_item_pointer =
-    L.pointer_type list_item_struct
-  in
   let pack_struct struct_type arg_list =
     L.struct_set_body struct_type (Array.of_list arg_list) true
   in
@@ -131,13 +134,30 @@ let trans (_, statements) =
         | _ -> raise(Failure("invalide argument passed."))
       in
 
+      let list_inner_type l = match l with
+          A.List(ty) -> ty
+        | _ -> raise(E.InvalidArgument)
+      in
+
+      let float_of_option f =
+        match f with
+          Some c -> c
+        | None -> 0.0
+      in
+
 
       (* Generate LLVM code for an expression; return its value *)
       let rec expr builder scope (t, e) = match e with
         | SIntegerLiteral i -> L.const_float num_t (float_of_int i)
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
-        | SListLiteral _ -> raise(E.InnerCompilerError)
+        | SListLiteral _ -> build_list (list_inner_type t) (t, e) scope builder
+        | SListAccess(e1, e2) ->
+          let e1' = expr builder scope e1 in
+          let e2' = expr builder scope e2 in
+          let item = access_list e1' (int_of_float (float_of_option (L.float_of_const e2'))) scope builder in
+          let target = L.build_struct_gep item 0 "TEMP" builder in
+          L.build_load target "TEMP" builder
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
         | SId id -> L.build_load (find_variable scope id) id builder
         | SAssign (n, e) -> update_variable scope n e builder; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
@@ -188,12 +208,10 @@ let trans (_, statements) =
         | SCall("print", [e]) -> L.build_call printf_func [| str_format_str ; (expr builder scope e) |] "printf" builder
         | _ -> raise (Failure ("Error: Not Yet Implemented"))
 
-      and add_list_variable (scope: var_table ref) t n e builder =
+      and build_list t e (scope: var_table ref) builder =
         let build_link temp_var b =
-          (* let end_item = list_end_item t (expr builder scope a) in *)
           let front_item = list_end_item t (expr builder scope b) in
-          (* let temp_var = L.build_alloca list_item_struct "TEMP" builder in *)
-          let head_var = L.build_alloca list_item_struct n builder in
+          let head_var = L.build_alloca list_item_struct "LIST_ITEM" builder in
           let () =
             ignore(L.build_store front_item head_var builder)
           in
@@ -215,33 +233,36 @@ let trans (_, statements) =
         let () =
           ignore(L.build_store empty_expr empty_var builder)
         in
-        let head = List.fold_left build_link empty_var (List.rev stripped_list)
-        in
-        scope := {
-          names = StringMap.add n head !scope.names;
-          parent = !scope.parent;
-        }
-      
+        List.fold_left build_link empty_var (List.rev stripped_list)
+
+
+      and access_list e n (scope: var_table ref) builder =
+        let rec iterate e n =
+          if n > 0 then
+            let node =
+              L.build_struct_gep e 1 "TEMP" builder
+            in
+            let next = L.build_load node "HELLO" builder in
+            access_list next (n-1) scope builder
+          else e
+        in iterate e n
 
       (* Construct code for a variable assigned in the given scope.
         Allocate on the stack, initialize its value, if appropriate,
         and mutate the given map to remember its value. *)
-      and add_variable (scope: var_table ref) t n e builder = match t with
-        (* need a specific method to handle all the allocations of a list *)
-          A.List(ty) -> add_list_variable scope ty n e builder
-        | _ ->
-          let e' = let (_, ex) = e in match ex with
-              SNoexpr -> get_init_noexpr t
-            | _ -> expr builder scope e
-          in L.set_value_name n e';
-          let ltype = ltype_of_typ t
-          in
-          let l_var = L.build_alloca ltype n builder in
-          ignore (L.build_store e' l_var builder);
-          scope := {
-            names = StringMap.add n l_var !scope.names;
-            parent = !scope.parent;
-          }
+      and add_variable (scope: var_table ref) t n e builder =
+        let e' = let (_, ex) = e in match ex with
+            SNoexpr -> get_init_noexpr t
+          | _ -> expr builder scope e
+        in L.set_value_name n e';
+        let ltype = ltype_of_typ t
+        in
+        let l_var = L.build_alloca ltype n builder in
+        ignore (L.build_store e' l_var builder);
+        scope := {
+          names = StringMap.add n l_var !scope.names;
+          parent = !scope.parent;
+        }
 
       (* Update a variable, beginning in the given scope.
         Bind the nearest occurrence of the variable to the given
@@ -260,6 +281,7 @@ let trans (_, statements) =
           | _ -> print_string ("Update error: " ^ name); raise Not_found
       in
 
+
       (* Build a single statement. Should return a builder. *)
       let rec build_statement scope stmt builder = match stmt with
             SExpr e -> let _ = expr builder scope e in builder
@@ -272,6 +294,8 @@ let trans (_, statements) =
             in let new_scope_r = ref new_scope in
             let build builder stmt = build_statement new_scope_r stmt builder
             in List.fold_left build builder sl
+          (* | SAppend(e1, e2, e3) ->
+            let  *)
 
           | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e builder in builder
 
