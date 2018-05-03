@@ -682,6 +682,16 @@ let trans (_, statements) =
                         SWhile(e2, SBlock[ body ;
                                            SExpr e3] ) ] ) builder
 
+          | SForEach(t, (e1_t, e1_id), e2, body) ->
+            let id = match e1_id with
+              SId(s) -> s
+              | _ -> "" (* todo: raise an error here *)
+            in
+            build_statement scope          
+            (
+              SStmtVDecl(Ast.Num, id, (Ast.Num, SIntegerLiteral(1000)))
+            ) builder
+
           | _ as t ->
             let str = Sast.string_of_sstmt t in
               Printf.printf "type: %s." str; raise (Failure ("Error: Not Yet Implemented"))
