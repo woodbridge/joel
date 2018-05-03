@@ -343,10 +343,24 @@ let trans (_, statements) =
               SId(s) -> s
               | _ -> "" (* todo: raise an error here *)
             in
-            build_statement scope          
+            let builder = build_statement scope          
             (
-              SStmtVDecl(Ast.Num, id, (Ast.Num, SIntegerLiteral(1000)))
+              SStmtVDecl(Ast.Num, id, (Ast.Num, SIntegerLiteral(0)))
             ) builder
+            in
+              (* inital value *)
+              let expr_a = SExpr(Ast.Void, SAssign(id, (Ast.Num, SIntegerLiteral(0)))) in
+                (* TODO: replace 9 with the length of the list *)
+                let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(id))), Less, (Ast.Num, (SIntegerLiteral(9))))) in
+                  let expr_c = (Ast.Num, SPop(id, Inc)) in 
+
+              build_statement scope
+
+              ( SBlock [
+                        SWhile(expr_b, SBlock[ body ;
+                                           SExpr expr_c] ) ] ) 
+
+              builder
 
           | _ as t ->
             let str = Sast.string_of_sstmt t in
