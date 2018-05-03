@@ -66,7 +66,7 @@ stmt:
                                             { ForDecl($3, $4, $6, $8, $10, $12)   }
 
   | FOREACH LPAREN typ expr IN expr RPAREN stmt
-                                            { ForEach($3, $4, $6)  }
+                                            { ForEach($3, $4, $6, $8)  }
   | WHILE LPAREN expr RPAREN stmt           { While($3, $5)         }
 
 expr_opt:

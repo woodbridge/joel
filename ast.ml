@@ -39,7 +39,7 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | ForDecl of typ * string * expr * expr * expr * stmt
-  | ForEach of typ * expr * expr
+  | ForEach of typ * expr * expr * stmt
   | While of expr * stmt
 
 type func_decl = {
