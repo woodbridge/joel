@@ -65,7 +65,7 @@ stmt:
   | FOR LPAREN typ ID ASSIGN expr SEMI expr SEMI expr_opt RPAREN stmt
                                             { ForDecl($3, $4, $6, $8, $10, $12)   }
 
-  | FOREACH LPAREN typ expr IN expr RPAREN stmt
+  | FOREACH LPAREN typ ID IN expr RPAREN stmt
                                             { ForEach($3, $4, $6, $8)  }
   | WHILE LPAREN expr RPAREN stmt           { While($3, $5)         }
 

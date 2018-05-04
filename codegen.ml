@@ -682,15 +682,13 @@ let trans (_, statements) =
                         SWhile(e2, SBlock[ body ;
                                            SExpr e3] ) ] ) builder
 
-          | SForEach(t, (e1_t, e1_id), e2, body) ->
+          | SForEach(t, id, e2, body) ->
+
             let index_var_name = "foreach_index" in
-            let id = match e1_id with
-              SId(s) -> s
-              | _ -> "" (* todo: raise an error here *)
-            in
               (* inital value *)
               (* let expr_a = SExpr(Ast.Void, SAssign(id, (Ast.Num, SIntegerLiteral(0)))) in *)
               let expr_a = SStmtVDecl(Ast.Num, index_var_name, (Ast.Num, SIntegerLiteral(0))) in
+                let expr_x = SStmtVDecl(Ast.Num, id, (Ast.Void, SNoexpr)) in
                 (* TODO: replace 9 with the length of the list *)
                 let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(index_var_name))), Less, (Ast.Num, (SIntegerLiteral(2))))) in
                   let expr_c = (Ast.Num, SPop(index_var_name, Inc)) in 
@@ -701,6 +699,7 @@ let trans (_, statements) =
               build_statement scope
 
               ( SBlock [ expr_a;
+                         expr_x;
                         SWhile(expr_b, SBlock[  list_lookup_assign ;
                                             body ;
                                            SExpr expr_c] ) ] ) 
