@@ -683,25 +683,26 @@ let trans (_, statements) =
                                            SExpr e3] ) ] ) builder
 
           | SForEach(t, (e1_t, e1_id), e2, body) ->
+            let index_var_name = "foreach_index" in
             let id = match e1_id with
               SId(s) -> s
               | _ -> "" (* todo: raise an error here *)
             in
-            let builder = build_statement scope          
-            (
-              SStmtVDecl(Ast.Num, id, (Ast.Num, SIntegerLiteral(0)))
-            ) builder
-            in
               (* inital value *)
-              let expr_a = SExpr(Ast.Void, SAssign(id, (Ast.Num, SIntegerLiteral(0)))) in
+              (* let expr_a = SExpr(Ast.Void, SAssign(id, (Ast.Num, SIntegerLiteral(0)))) in *)
+              let expr_a = SStmtVDecl(Ast.Num, index_var_name, (Ast.Num, SIntegerLiteral(0))) in
                 (* TODO: replace 9 with the length of the list *)
-                let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(id))), Less, (Ast.Num, (SIntegerLiteral(9))))) in
-                  let expr_c = (Ast.Num, SPop(id, Inc)) in 
+                let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(index_var_name))), Less, (Ast.Num, (SIntegerLiteral(2))))) in
+                  let expr_c = (Ast.Num, SPop(index_var_name, Inc)) in 
+                    let list_lookup = (Ast.Num, SListAccess(e2, (Ast.Num, SId(index_var_name))))
+                      in
+                    let list_lookup_assign = SExpr(Ast.Num, SAssign(id, list_lookup)) in
 
               build_statement scope
 
-              ( SBlock [
-                        SWhile(expr_b, SBlock[ body ;
+              ( SBlock [ expr_a;
+                        SWhile(expr_b, SBlock[  list_lookup_assign ;
+                                            body ;
                                            SExpr expr_c] ) ] ) 
 
               builder
