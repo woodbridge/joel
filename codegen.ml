@@ -100,21 +100,13 @@ let trans (_, statements) =
 
   let list_end_item ty e1 =
     let list_item_struct = get_list_type ty in
-    let list_item_pointer = get_list_pointer_type ty in
-    let () =
-      pack_struct list_item_struct [ltype_of_typ ty; list_item_pointer]
-    in
     L.const_named_struct list_item_struct
-      (Array.of_list [e1; L.const_pointer_null (L.pointer_type list_item_struct)])
+      (Array.of_list [e1; L.const_pointer_null (L.pointer_type list_item_struct); L.const_int bool_t 0])
   in
 
   let list_terminator ty =
     let list_item_struct = get_list_type ty in
-    let list_item_pointer = get_list_pointer_type ty in
-    let () =
-      pack_struct list_item_struct [ltype_of_typ ty; list_item_pointer]
-    in
-    L.const_named_struct list_item_struct (Array.of_list [L.const_null (ltype_of_typ ty); L.const_pointer_null (L.pointer_type list_item_struct)])
+    L.const_named_struct list_item_struct (Array.of_list [L.const_null (ltype_of_typ ty); L.const_pointer_null (L.pointer_type list_item_struct); L.const_int bool_t 1])
   in
 
 
@@ -237,8 +229,11 @@ let trans (_, statements) =
         )
         the_module
     in
+
+
+
     let list_length_function_builder = L.builder_at_end context (L.entry_block list_length_function) in
-    (* let pointer_to_head =
+    let pointer_to_head =
       L.build_alloca list_item_pointer "TEMP" list_length_function_builder
     in
     let () =
@@ -247,6 +242,18 @@ let trans (_, statements) =
     let loaded_pointer_to_head =
       L.build_load pointer_to_head "TEMP" list_length_function_builder
     in
+    let pointer_to_flag =
+      L.build_struct_gep loaded_pointer_to_head 2 "TEMP" list_length_function_builder
+    in
+    let loaded_pointer_to_flag =
+      L.build_load pointer_to_flag "TEMP" list_length_function_builder
+    in
+    let current_flag =
+      L.build_alloca bool_t "TEMP" list_length_function_builder
+    in
+    let () =
+      ignore(L.build_store loaded_pointer_to_flag current_flag list_length_function_builder)
+    in
     let iterator_alloc = L.build_alloca num_t "TEMP" list_length_function_builder in
     let () =
       ignore(L.build_store (L.const_float num_t 0.0) iterator_alloc list_length_function_builder)
@@ -254,11 +261,17 @@ let trans (_, statements) =
     let pred_bb = L.append_block context "while" list_length_function in
     let _ = L.build_br pred_bb list_length_function_builder in
     let pred_builder = L.builder_at_end context pred_bb in
-    let pointer_to_flag =
+    let new_pointer_to_flag =
       L.build_struct_gep loaded_pointer_to_head 2 "TEMP" pred_builder
     in
+    let loaded_new_pointer_to_flag =
+      L.build_load new_pointer_to_flag "TEMP" pred_builder
+    in
+    let () =
+      ignore(L.build_store loaded_new_pointer_to_flag current_flag pred_builder)
+    in
     let comparison =
-      L.build_fcmp L.Fcmp.Oeq (L.build_load pointer_to_flag "TEMP" pred_builder) (L.const_int bool_t 1) "TEMP" pred_builder
+      L.build_icmp L.Icmp.Eq (L.build_load current_flag "TEMP" pred_builder) (L.const_int bool_t 0) "TEMP" pred_builder
     in
 
     let body_bb = L.append_block context "while_body" list_length_function in
@@ -279,19 +292,25 @@ let trans (_, statements) =
     let () =
       ignore(L.build_store dereferened_pointer_to_next loaded_pointer_to_head while_builder)
     in
+
     let () =
       ignore(L.build_store new_val iterator_alloc while_builder)
     in
     let () = add_terminal while_builder (L.build_br pred_bb) in
     let merge_bb = L.append_block context "merge" list_length_function in
+    let merge_builder = L.builder_at_end context merge_bb in
     let _ = L.build_cond_br comparison body_bb merge_bb pred_builder in
 
-    let t = L.build_ret loaded_iterator in *)
-    let t = L.build_ret (L.const_float num_t 0.0) in
-    let () = add_terminal list_length_function_builder t in
+    let t = L.build_ret (L.build_load iterator_alloc "TEMP" merge_builder) in
+    let () = add_terminal (L.builder_at_end context merge_bb) t in
     list_length_function
   in
   (* END OF LIST LENGTH FUNCTION DEFINITION *)
+  let list_length ty =
+    match (L.lookup_function ("_LIST_LENGTH" ^ (A.string_of_typ ty)) the_module) with
+      Some(f) -> f
+    | None -> build_list_length_function ty
+  in
 
   (* Iterate through the list of semantically-checked statements, generating code for each one. *)
   let build_program_body statements =
@@ -349,15 +368,9 @@ let trans (_, statements) =
           in
           L.build_load value "TEMP" builder
         | SLength(e) ->
-          L.const_float num_t 0.0
-          (* let e' = expr builder scope e in
-          let item =
-            L.build_call list_length_function (Array.of_list [e']) "_FUNC_VAL" builder
-          in
-          let value =
-            L.build_struct_gep item 0 "TEMP" builder
-          in
-          L.build_load value "TEMP" builder *)
+          let (t1, _) = e in
+          let e' = expr builder scope e in
+          L.build_call (list_length (t1)) (Array.of_list [e']) "_FUNC_VAL" builder
         | SStringLiteral s -> L.build_global_stringptr s "string" builder
         | SId id -> L.build_load (find_variable scope id) id builder
         | SAssign (n, e) -> update_variable scope n e builder; expr builder scope (t, SId(n)) (* Update the variable; return its new value *)
