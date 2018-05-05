@@ -92,6 +92,13 @@ let check (_, statements) =
       if is_valid then
         (inner_ty, SListAccess((t1, e1'), (t2, e2')))
       else raise(E.NonNumIndex)
+    | Length(e) ->
+      let (ty, e') =
+        convert_expr scope e
+      in let se = match ty with
+          List(ty) -> ( Num, SLength (ty, e') )
+          | _ -> raise( E.NonListLength )
+      in se
     | Binop(e1, op, e2) ->
       let (t1, e1') = convert_expr scope e1
       and (t2, e2') = convert_expr scope e2 in
@@ -170,7 +177,9 @@ let check (_, statements) =
         if t = Void &&
            (ty = List(Num) || ty = List(Bool) || ty = List(Dict)
             || ty = List(String) || ty = List(Table))
-          then SStmtVDecl(ty, id, (ty, e'))
+        then
+          let _ = add_variable scope ty id
+        in SStmtVDecl(ty, id, (ty, e'))
           else raise(E.InvalidAssignment)
       | _ -> raise(E.InvalidAssignment)
   in

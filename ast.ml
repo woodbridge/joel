@@ -20,6 +20,7 @@ type expr =
   | DictLiteral of (expr * expr) list
   | TableLiteral of (expr list) list
   | ListAccess of expr * expr
+  | Length of expr
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
@@ -95,6 +96,7 @@ let rec string_of_expr = function
   | BoolLiteral(l) -> string_of_bool l
   | ListLiteral(_) -> "List"
   | ListAccess(_, _) -> "List Access"
+  | Length(_) -> "List Length"
   | DictLiteral(_) -> "Dict"
   | TableLiteral(_) -> "Table"
   | Call(s, _) -> s ^ "()"

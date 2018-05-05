@@ -5,7 +5,7 @@ open Ast
 %}
 
 /* Token Declaration */
-%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI LACCESS RACCESS
+%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI ACCESS LENGTH
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
@@ -75,6 +75,10 @@ expr_opt:
 
 expr:
 	 primitives             { $1                      }
+  | ACCESS LPAREN expr COMMA expr RPAREN
+                          { ListAccess($3, $5)      }
+  | LENGTH LPAREN expr RPAREN
+                          { Length($3)              }
   | expr PLUS expr        { Binop($1, Add, $3)      }
   | expr MINUS expr       { Binop($1, Sub, $3)      }
   | expr TIMES expr       { Binop($1, Mult, $3)     }
@@ -100,8 +104,6 @@ expr:
   | ID TIMESASSIGN expr   { AssignOp($1, Mult, $3)  }
   | ID DIVIDEASSIGN expr  { AssignOp($1, Div, $3)   }
   | ID MODASSIGN expr     { AssignOp($1, Mod, $3)   }
-  | expr LACCESS expr RACCESS
-                          { ListAccess($1, $3)   }
   | ID LPAREN args_opt RPAREN
                           { Call($1, $3)        }
   | LPAREN expr RPAREN    { $2                      }

@@ -3,6 +3,7 @@ exception UndefinedId of string
 exception InvalidAssignment
 exception InvalidArgument
 exception InvalidBinaryOperation
+exception InvalidListType
 exception InvalidPostOperation
 exception WrongNumberOfArguments
 exception DuplicateVariable of string
@@ -11,5 +12,7 @@ exception WrongType of string
 exception NothingAfterReturn
 exception ReturnsOutsideFunction
 exception NonListAccess
+exception NonListLength
 exception NonNumIndex
-exception InnerCompilerError
+exception IndexOutOfBounds
+exception TestException of string
