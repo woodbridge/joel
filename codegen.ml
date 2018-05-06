@@ -84,7 +84,7 @@ let trans (_, statements) =
       A.Num -> num_list_item_pointer
     | A.Bool -> bool_list_item_pointer
     | A.String -> string_list_item_pointer
-    | _ -> raise(E.InvalidListType)
+    | _ -> raise(Failure("here: " ^ A.string_of_typ ty)) (* this one is where the error is happening. *)
   in
   (* Convert Joel types to LLVM types *)
   let ltype_of_typ = function
@@ -683,14 +683,19 @@ let trans (_, statements) =
                                            SExpr e3] ) ] ) builder
 
           | SForEach(t, id, e2, body) ->
-
             let index_var_name = "foreach_index" in
               (* inital value *)
-              (* let expr_a = SExpr(Ast.Void, SAssign(id, (Ast.Num, SIntegerLiteral(0)))) in *)
               let expr_a = SStmtVDecl(Ast.Num, index_var_name, (Ast.Num, SIntegerLiteral(0))) in
                 let expr_x = SStmtVDecl(Ast.Num, id, (Ast.Void, SNoexpr)) in
-                (* TODO: replace 9 with the length of the list *)
-                let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(index_var_name))), Less, (Ast.Num, (SIntegerLiteral(2))))) in
+
+                (* get the actual type of the list to pass to length call *)
+                let (ty, e2') = e2 in
+                  let list_length = match ty with
+                    List(ty) -> (Ast.Num, SLength (ty, e2') )
+                    | _ -> raise(Failure("fail"))
+                  in 
+
+                let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(index_var_name))), Less, list_length)) in
                   let expr_c = (Ast.Num, SPop(index_var_name, Inc)) in 
                     let list_lookup = (Ast.Num, SListAccess(e2, (Ast.Num, SId(index_var_name))))
                       in
@@ -698,16 +703,11 @@ let trans (_, statements) =
 
               build_statement scope
 
-              (* OKay, this is on hold until josh fixes da shit... *)
-
               ( SBlock [ expr_a;
                          expr_x;
                         SWhile(expr_b, SBlock[ list_lookup_assign ;
-                                            SExpr(Ast.Void, SCall("printf", [(Ast.Num, SId("foreach_index"))]));
-                                            SExpr(Ast.Void, SCall("printf", [(Ast.Num, SListAccess(e2, (Ast.Num, SId("foreach_index"))))]));
                                             body ;
                                            SExpr expr_c] ) ] ) 
-
               builder
 
           | _ as t ->

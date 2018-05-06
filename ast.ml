@@ -79,11 +79,11 @@ let string_of_pop = function
     Inc -> "++"
   | Dec -> "--"
 
-let string_of_typ = function
+let rec string_of_typ = function
     Num -> "num"
   | String -> "string"
   | Bool -> "bool"
-  | List(_) -> "list"
+  | List(t) -> "list: " ^ string_of_typ t
   | Dict -> "dict"
   | Table -> "table"
   | Void -> "void"
