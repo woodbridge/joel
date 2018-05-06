@@ -636,7 +636,7 @@ let trans (_, statements) =
               L.build_alloca list_item_pointer "TEMP" builder
             in
             let () =
-              ignore(L.build_store e1' pointer_to_head builder)
+              ignore(L.build_store copy_of_mem_addr pointer_to_head builder)
             in
             let loaded_pointer_to_head =
               L.build_load pointer_to_head "TEMP" builder
@@ -697,8 +697,22 @@ let trans (_, statements) =
               ignore(L.build_store new_val iterator_alloc while_builder)
             in
             let () = add_terminal while_builder (L.build_br pred_bb) in
+
+            let iterator_check_bb = L.append_block context "check_iterator" the_function in
+            let iterator_check_builder = L.builder_at_end context iterator_check_bb in
+
+            let iterator_check =
+              L.build_fcmp L.Fcmp.Oeq (L.build_load iterator_alloc "TEMP" iterator_check_builder) (L.const_float num_t 0.0) "TEMP" iterator_check_builder
+            in
+            let handle_zero_bb = L.append_block context "handle_zero_case" the_function in
+            let handle_zero_builder = L.builder_at_end context handle_zero_bb in
+            let () =
+              ignore(L.build_store e1' pointer_to_head handle_zero_builder)
+            in
             let merge_bb = L.append_block context "merge" the_function in
             let merge_builder = L.builder_at_end context merge_bb in
+            let () = add_terminal handle_zero_builder (L.build_br merge_bb) in
+
             let newly_loaded_pointer_to_head =
               L.build_load pointer_to_head "TEMP" merge_builder
             in
@@ -728,7 +742,8 @@ let trans (_, statements) =
               ignore(L.build_store empty_var pointer_to_next merge_builder)
             in
 
-            let _ = L.build_cond_br comparison body_bb merge_bb pred_builder in
+            let _ = L.build_cond_br iterator_check handle_zero_bb merge_bb iterator_check_builder in
+            let _ = L.build_cond_br comparison body_bb iterator_check_bb pred_builder in
             merge_builder
 
           | SIf (predicate, then_stmt, else_stmt) ->
