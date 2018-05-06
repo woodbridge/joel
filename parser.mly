@@ -5,7 +5,7 @@ open Ast
 %}
 
 /* Token Declaration */
-%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI ACCESS LENGTH TABLEACCESS
+%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI ACCESS LENGTH TABLEACCESS TABLEAPPEND
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
@@ -53,6 +53,8 @@ stmt:
   | vdecl                                   { $1 }
   | APPEND LPAREN expr COMMA expr RPAREN SEMI
                                             { Append($3, $5)        }
+  | TABLEAPPEND LPAREN expr COMMA args_opt RPAREN SEMI
+                                            { TableAppend($3, $5)        }
   | ALTER LPAREN expr COMMA expr COMMA expr RPAREN SEMI
                                             { Alter($3, $5, $7)        }
   | RETURN expr_opt SEMI                    { Return $2             }

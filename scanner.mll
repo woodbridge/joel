@@ -39,6 +39,7 @@ rule token = parse
 | '&'	   { AND }
 | "get"	   { ACCESS }
 | "getCol" { TABLEACCESS }
+| "addRow" { TABLEAPPEND }
 | '|'	   { OR }
 | '^'	   { XOR }
 | '!'	   { NOT }

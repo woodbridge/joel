@@ -61,7 +61,7 @@ let check (_, statements) =
   	(* Convert an expr to a sexpr. *)
   	let rec convert_expr scope exp = match exp with
       StringLiteral s -> (String, SStringLiteral s)
-     | IntegerLiteral s -> (Num, SIntegerLiteral s)
+    | IntegerLiteral s -> (Num, SIntegerLiteral s)
     | FloatLiteral s -> (Num, SFloatLiteral s)
     | BoolLiteral s -> (Bool, SBoolLiteral s)
     | TableLiteral rows ->
@@ -238,6 +238,18 @@ let check (_, statements) =
     in let same_type = inner_ty = t2 in
     if same_type then SAppend((t1, e1'), (t2, e2'))
     else raise E.InvalidArgument
+  | TableAppend(e1, e2) ->
+    convert_statement scope (Block( (List.mapi (fun i a -> Append(TableAccess(e1, i), List.nth e2 i)) e2) ) )
+    (* [Append(TableAccess(e1, 0), List.nth e2 0)]
+    let (t1, e1') = convert_expr scope e1 in
+    let arg_list = List.map (convert_expr scope) e2 in
+    let typ_list = List.map (fun e -> let (t2, _) = e in t2) arg_list in
+    let inner_tys = match t1 with
+        Table(tys) -> tys
+      | _ -> raise(E.InvalidArgument)
+    in let same_type = List.fold_left2 (fun a b c -> a && (b=c)) true inner_tys typ_list in
+    if same_type then STableAppend((t1, e1'), arg_list)
+    else raise E.InvalidArgument *)
   | Alter(e1, e2, e3) ->
     let (t1, e1') = convert_expr scope e1
     and (t2, e2') = convert_expr scope e2

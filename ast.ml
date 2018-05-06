@@ -35,6 +35,7 @@ type stmt =
     Block of stmt list
   | Expr of expr
   | Append of expr * expr
+  | TableAppend of expr * expr list
   | Alter of expr * expr * expr
   | StmtVDecl of typ * string * expr
   | Return of expr
