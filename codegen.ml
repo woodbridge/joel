@@ -73,6 +73,7 @@ let trans (_, statements) =
     pack_struct string_list_item_struct [str_t; string_list_item_pointer; bool_t]
   in
 
+
   let get_list_type ty = match ty with
       A.Num -> num_list_item_struct
     | A.Bool -> bool_list_item_struct
@@ -86,16 +87,24 @@ let trans (_, statements) =
     | A.String -> string_list_item_pointer
     | _ -> raise(Failure("here: " ^ A.string_of_typ ty)) (* this one is where the error is happening. *)
   in
+  let table_struct tys =
+    L.struct_type context (Array.of_list (List.map get_list_pointer_type tys))
+  in
+
+  let table_struct_pointer tys =
+    L.pointer_type (table_struct tys)
+  in
+
   (* Convert Joel types to LLVM types *)
-  let ltype_of_typ = function
+  let ltype_of_typ ty = match ty with
       A.Num   -> num_t
     | A.Bool  -> bool_t
     | A.Void  -> void_t
     | A.String -> str_t
     | A.List(t) -> get_list_pointer_type t
-    | _ -> raise (Failure ("Error: Not Yet Implemented"))
+    | A.Table(t) -> table_struct_pointer t
+    | _ -> raise (Failure ("Error: Not Yet Implemented " ^ (A.string_of_typ ty)))
   in
-
 
 
   let list_end_item ty e1 =
@@ -107,6 +116,48 @@ let trans (_, statements) =
   let list_terminator ty =
     let list_item_struct = get_list_type ty in
     L.const_named_struct list_item_struct (Array.of_list [L.const_null (ltype_of_typ ty); L.const_pointer_null (L.pointer_type list_item_struct); L.const_int bool_t 1])
+  in
+
+
+  let null_table tys =
+    let new_table_type = table_struct tys in
+    L.const_null new_table_type
+  in
+
+  let empty_table tys builder =
+    let new_table_type = table_struct tys in
+    let store_list_terminator ty =
+      let item = list_terminator ty in
+      let item_pointer =
+        L.build_alloca (get_list_type ty) "TEMP" builder
+      in
+      let () =
+        ignore(L.build_store item item_pointer builder)
+      in
+      item_pointer
+    in
+    let list_heads = List.map store_list_terminator tys in
+    let null_table = L.const_null new_table_type in
+    let new_table =
+      L.build_alloca (table_struct tys) "TEMP" builder
+    in
+    let () =
+      ignore(L.build_store null_table new_table builder)
+    in
+    let rec initialize_list_head i =
+      if i>=0 then
+        let list_head = List.nth list_heads i in
+
+        let pointer_to_item =
+          L.build_struct_gep new_table i "TEMP" builder
+        in
+        let () =
+          ignore(L.build_store list_head pointer_to_item builder)
+        in
+        initialize_list_head (i-1)
+      else new_table
+    in
+    initialize_list_head ((List.length list_heads) - 1)
   in
 
 
@@ -148,8 +199,7 @@ let trans (_, statements) =
     let list_item_struct = get_list_type ty in
     let list_access_function =
       L.define_function
-        ("_LIST_ACCESS_" ^ (A.string_of_typ ty))
-        (
+        ("_LIST_ACCESS_" ^ (A.string_of_typ ty)) (
           L.function_type
           list_item_pointer
           (Array.of_list [list_item_pointer; num_t])
@@ -221,7 +271,6 @@ let trans (_, statements) =
       Some(f) -> f
     | None -> build_list_access_function ty
   in
-
 
   (* START OF LIST LENGTH FUNCTION DEFINITION *)
   let build_list_length_function ty =
@@ -369,6 +418,37 @@ let trans (_, statements) =
         | SFloatLiteral f -> L.const_float num_t (float_of_string f)
         | SBoolLiteral b -> L.const_int bool_t (if b then 1 else 0)
         | SListLiteral _ -> build_list (list_inner_type t) (t, e) scope builder
+        | STableLiteral lists ->
+          let inner_ty_list = match t with
+              A.Table(tys) -> tys
+            | _ -> raise(E.InvalidArgument)
+          in
+          let make_empty_list ty = expr builder scope (A.List(ty), SListLiteral []) in
+          let list_heads =
+            if (List.length lists) = 0 then List.map make_empty_list inner_ty_list
+            else List.map (expr builder scope) lists
+          in
+          let null_table = null_table inner_ty_list in
+          let new_table =
+            L.build_alloca (table_struct inner_ty_list) "TEMP" builder
+          in
+          let () =
+            ignore(L.build_store null_table new_table builder)
+          in
+          let rec load_list_head i =
+            if i>=0 then
+              let list_head = List.nth list_heads i in
+
+              let pointer_to_item =
+                L.build_struct_gep new_table i "TEMP" builder
+              in
+              let () =
+                ignore(L.build_store list_head pointer_to_item builder)
+              in
+              load_list_head (i-1)
+            else new_table
+          in
+          load_list_head ((List.length list_heads) - 1)
         | SListAccess(e1, e2) ->
           let e1' = expr builder scope e1 in
           let e2' = expr builder scope e2 in
@@ -379,6 +459,31 @@ let trans (_, statements) =
             L.build_struct_gep item 0 "TEMP" builder
           in
           L.build_load value "TEMP" builder
+        | STableAccess(e1, i) ->
+          let e1' = expr builder scope e1 in
+          let (ty, _) = e1 in
+          let inner_ty_list = match ty with
+              A.Table(tys) -> tys
+            | _ -> raise(E.InvalidArgument)
+          in
+
+          let new_table =
+            L.build_alloca (table_struct inner_ty_list) "TEMP" builder
+          in
+          let loaded_table =
+            L.build_load e1' "TEMP" builder
+          in
+          let () =
+            ignore(L.build_store loaded_table new_table builder)
+          in
+
+          let value =
+            L.build_struct_gep new_table i "TEMP" builder
+          in
+          let loaded_value =
+            L.build_load value "TEMP" builder
+          in
+          loaded_value
         | SLength(e) ->
           let (t1, _) = e in
           let e' = expr builder scope e in
@@ -593,8 +698,22 @@ let trans (_, statements) =
               ignore(L.build_store new_val iterator_alloc while_builder)
             in
             let () = add_terminal while_builder (L.build_br pred_bb) in
+
+            let iterator_check_bb = L.append_block context "check_iterator" the_function in
+            let iterator_check_builder = L.builder_at_end context iterator_check_bb in
+
+            let iterator_check =
+              L.build_fcmp L.Fcmp.Oeq (L.build_load iterator_alloc "TEMP" iterator_check_builder) (L.const_float num_t 0.0) "TEMP" iterator_check_builder
+            in
+            let handle_zero_bb = L.append_block context "handle_zero_case" the_function in
+            let handle_zero_builder = L.builder_at_end context handle_zero_bb in
+            let () =
+              ignore(L.build_store e1' pointer_to_head handle_zero_builder)
+            in
             let merge_bb = L.append_block context "merge" the_function in
             let merge_builder = L.builder_at_end context merge_bb in
+            let () = add_terminal handle_zero_builder (L.build_br merge_bb) in
+
             let newly_loaded_pointer_to_head =
               L.build_load pointer_to_head "TEMP" merge_builder
             in
@@ -624,7 +743,8 @@ let trans (_, statements) =
               ignore(L.build_store empty_var pointer_to_next merge_builder)
             in
 
-            let _ = L.build_cond_br comparison body_bb merge_bb pred_builder in
+            let _ = L.build_cond_br iterator_check handle_zero_bb merge_bb iterator_check_builder in
+            let _ = L.build_cond_br comparison body_bb iterator_check_bb pred_builder in
             merge_builder
 
           | SIf (predicate, then_stmt, else_stmt) ->

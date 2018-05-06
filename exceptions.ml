@@ -12,7 +12,9 @@ exception WrongType of string
 exception NothingAfterReturn
 exception ReturnsOutsideFunction
 exception NonListAccess
+exception NonTableAccess
 exception NonListLength
 exception NonNumIndex
 exception IndexOutOfBounds
 exception TestException of string
+exception MixedTypes

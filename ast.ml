@@ -7,7 +7,7 @@ type uop = Not | Neg
 
 type pop = Inc | Dec
 
-type typ = Num | String | Bool | List of typ | Dict | Table | Void
+type typ = Num | String | Bool | List of typ | Dict | Table of typ list | Void
 
 type bind = typ * string
 
@@ -20,6 +20,7 @@ type expr =
   | DictLiteral of (expr * expr) list
   | TableLiteral of (expr list) list
   | ListAccess of expr * expr
+  | TableAccess of expr * int
   | Length of expr
   | Id of string
   | Binop of expr * op * expr
@@ -85,7 +86,9 @@ let rec string_of_typ = function
   | Bool -> "bool"
   | List(t) -> "list: " ^ string_of_typ t
   | Dict -> "dict"
-  | Table -> "table"
+  | Table(lst) ->
+      let concat_ocaml_string a b = a ^ (string_of_typ b) ^ " " in
+      List.fold_left concat_ocaml_string "table " lst
   | Void -> "void"
 
 
@@ -96,6 +99,7 @@ let rec string_of_expr = function
   | BoolLiteral(l) -> string_of_bool l
   | ListLiteral(_) -> "List"
   | ListAccess(_, _) -> "List Access"
+  | TableAccess(_, _) -> "Table Access"
   | Length(_) -> "List Length"
   | DictLiteral(_) -> "Dict"
   | TableLiteral(_) -> "Table"
