@@ -144,9 +144,10 @@ let trans (_, statements) =
   (* START OF LIST ACCESS FUNCTION DEFINITION *)
   let build_list_access_function ty =
     let list_item_pointer = get_list_pointer_type ty in
+    let list_item_struct = get_list_type ty in
     let list_access_function =
       L.define_function
-        ("_LIST_ACCESS" ^ (A.string_of_typ ty))
+        ("_LIST_ACCESS_" ^ (A.string_of_typ ty))
         (
           L.function_type
           list_item_pointer
@@ -155,11 +156,20 @@ let trans (_, statements) =
         the_module
     in
     let list_access_function_builder = L.builder_at_end context (L.entry_block list_access_function) in
+    let copy_of_mem_addr =
+      L.build_alloca list_item_struct "TEMP" list_access_function_builder
+    in
+    let orig_mem_addr =
+      L.build_load (L.param list_access_function 0) "TEMP" list_access_function_builder
+    in
+    let () =
+      ignore(L.build_store orig_mem_addr copy_of_mem_addr list_access_function_builder)
+    in
     let pointer_to_head =
       L.build_alloca list_item_pointer "TEMP" list_access_function_builder
     in
     let () =
-      ignore(L.build_store (L.param list_access_function 0) pointer_to_head list_access_function_builder)
+      ignore(L.build_store copy_of_mem_addr pointer_to_head list_access_function_builder)
     in
     let loaded_pointer_to_head =
       L.build_load pointer_to_head "TEMP" list_access_function_builder
@@ -174,7 +184,6 @@ let trans (_, statements) =
     let comparison =
       L.build_fcmp L.Fcmp.Olt (L.build_load iterator_alloc "TEMP" pred_builder) (L.param list_access_function 1) "TEMP" pred_builder
     in
-
     let body_bb = L.append_block context "while_body" list_access_function in
     let while_builder = L.builder_at_end context body_bb in
     let loaded_iterator = L.build_load iterator_alloc "TEMP" while_builder in
@@ -193,9 +202,6 @@ let trans (_, statements) =
     let () =
       ignore(L.build_store dereferened_pointer_to_next loaded_pointer_to_head while_builder)
     in
-
-
-
     let () =
       ignore(L.build_store new_val iterator_alloc while_builder)
     in
@@ -210,7 +216,7 @@ let trans (_, statements) =
   (* END OF LIST ACCESS FUNCTION DEFINITION *)
 
   let list_access ty =
-    match (L.lookup_function ("_LIST_ACCESS" ^ (A.string_of_typ ty)) the_module) with
+    match (L.lookup_function ("_LIST_ACCESS_" ^ (A.string_of_typ ty)) the_module) with
       Some(f) -> f
     | None -> build_list_access_function ty
   in
@@ -219,9 +225,10 @@ let trans (_, statements) =
   (* START OF LIST LENGTH FUNCTION DEFINITION *)
   let build_list_length_function ty =
     let list_item_pointer = get_list_pointer_type ty in
+    let list_item_struct = get_list_type ty in
     let list_length_function =
       L.define_function
-        ("_LIST_LENGTH" ^ (A.string_of_typ ty))
+        ("_LIST_LENGTH_" ^ (A.string_of_typ ty))
         (
           L.function_type
           num_t
@@ -229,15 +236,21 @@ let trans (_, statements) =
         )
         the_module
     in
-
-
-
     let list_length_function_builder = L.builder_at_end context (L.entry_block list_length_function) in
+    let copy_of_mem_addr =
+      L.build_alloca list_item_struct "TEMP" list_length_function_builder
+    in
+    let orig_mem_addr =
+      L.build_load (L.param list_length_function 0) "TEMP" list_length_function_builder
+    in
+    let () =
+      ignore(L.build_store orig_mem_addr copy_of_mem_addr list_length_function_builder)
+    in
     let pointer_to_head =
       L.build_alloca list_item_pointer "TEMP" list_length_function_builder
     in
     let () =
-      ignore(L.build_store (L.param list_length_function 0) pointer_to_head list_length_function_builder)
+      ignore(L.build_store copy_of_mem_addr pointer_to_head list_length_function_builder)
     in
     let loaded_pointer_to_head =
       L.build_load pointer_to_head "TEMP" list_length_function_builder
@@ -273,7 +286,6 @@ let trans (_, statements) =
     let comparison =
       L.build_icmp L.Icmp.Eq (L.build_load current_flag "TEMP" pred_builder) (L.const_int bool_t 0) "TEMP" pred_builder
     in
-
     let body_bb = L.append_block context "while_body" list_length_function in
     let while_builder = L.builder_at_end context body_bb in
     let loaded_iterator = L.build_load iterator_alloc "TEMP" while_builder in
@@ -292,7 +304,6 @@ let trans (_, statements) =
     let () =
       ignore(L.build_store dereferened_pointer_to_next loaded_pointer_to_head while_builder)
     in
-
     let () =
       ignore(L.build_store new_val iterator_alloc while_builder)
     in
@@ -300,17 +311,17 @@ let trans (_, statements) =
     let merge_bb = L.append_block context "merge" list_length_function in
     let merge_builder = L.builder_at_end context merge_bb in
     let _ = L.build_cond_br comparison body_bb merge_bb pred_builder in
-
     let t = L.build_ret (L.build_load iterator_alloc "TEMP" merge_builder) in
     let () = add_terminal (L.builder_at_end context merge_bb) t in
     list_length_function
   in
   (* END OF LIST LENGTH FUNCTION DEFINITION *)
   let list_length ty =
-    match (L.lookup_function ("_LIST_LENGTH" ^ (A.string_of_typ ty)) the_module) with
+    match (L.lookup_function ("_LIST_LENGTH_" ^ (A.string_of_typ ty)) the_module) with
       Some(f) -> f
     | None -> build_list_length_function ty
   in
+
 
   (* Iterate through the list of semantically-checked statements, generating code for each one. *)
   let build_program_body statements =
@@ -441,7 +452,6 @@ let trans (_, statements) =
         in
         (* build an empty item to terminate the list *)
         let empty_expr =
-          (* list_end_item t (L.const_null (ltype_of_typ t)) *)
           list_terminator t
         in
         let empty_var = L.build_alloca list_item_struct "TEMP" builder in
@@ -449,9 +459,6 @@ let trans (_, statements) =
           ignore(L.build_store empty_expr empty_var builder)
         in
         List.fold_left build_link empty_var (List.rev stripped_list)
-
-
-
 
       (* Construct code for a variable assigned in the given scope.
         Allocate on the stack, initialize its value, if appropriate,
@@ -504,6 +511,120 @@ let trans (_, statements) =
             let  *)
 
           | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e builder in builder
+          | SAppend(e1, e2) ->
+            let e1' = expr builder scope e1 in
+            let e2' = expr builder scope e2 in
+            let (t, _) = e1 in
+
+            let list_item_pointer = get_list_pointer_type (list_inner_type t) in
+            let list_item_struct = get_list_type (list_inner_type t) in
+            let copy_of_mem_addr =
+              L.build_alloca list_item_struct "TEMP" builder
+            in
+            let orig_mem_addr =
+              L.build_load e1' "TEMP" builder
+            in
+            let () =
+              ignore(L.build_store orig_mem_addr copy_of_mem_addr builder)
+            in
+            let pointer_to_head =
+              L.build_alloca list_item_pointer "TEMP" builder
+            in
+            let () =
+              ignore(L.build_store copy_of_mem_addr pointer_to_head builder)
+            in
+            let loaded_pointer_to_head =
+              L.build_load pointer_to_head "TEMP" builder
+            in
+            let pointer_to_flag =
+              L.build_struct_gep loaded_pointer_to_head 2 "TEMP" builder
+            in
+            let loaded_pointer_to_flag =
+              L.build_load pointer_to_flag "TEMP" builder
+            in
+            let current_flag =
+              L.build_alloca bool_t "TEMP" builder
+            in
+            let () =
+              ignore(L.build_store loaded_pointer_to_flag current_flag builder)
+            in
+            let iterator_alloc = L.build_alloca num_t "TEMP" builder in
+            let () =
+              ignore(L.build_store (L.const_float num_t 0.0) iterator_alloc builder)
+            in
+            let pred_bb = L.append_block context "while" the_function in
+            let _ = L.build_br pred_bb builder in
+            let pred_builder = L.builder_at_end context pred_bb in
+            let new_pointer_to_flag =
+              L.build_struct_gep loaded_pointer_to_head 2 "TEMP" pred_builder
+            in
+            let loaded_new_pointer_to_flag =
+              L.build_load new_pointer_to_flag "TEMP" pred_builder
+            in
+            let () =
+              ignore(L.build_store loaded_new_pointer_to_flag current_flag pred_builder)
+            in
+            let comparison =
+              L.build_icmp L.Icmp.Eq (L.build_load current_flag "TEMP" pred_builder) (L.const_int bool_t 0) "TEMP" pred_builder
+            in
+            let body_bb = L.append_block context "while_body" the_function in
+            let while_builder = L.builder_at_end context body_bb in
+            let loaded_iterator = L.build_load iterator_alloc "TEMP" while_builder in
+            let new_val =
+              L.build_fadd loaded_iterator (L.const_float num_t 1.0) "TEMP" while_builder
+            in
+            let pointer_to_next =
+              L.build_struct_gep loaded_pointer_to_head 1 "TEMP" while_builder
+            in
+            let loaded_pointer_to_next =
+              L.build_load pointer_to_next "TEMP" while_builder
+            in
+            let dereferened_pointer_to_next =
+              L.build_load loaded_pointer_to_next "TEMP" while_builder
+            in
+            let () =
+              ignore(L.build_store dereferened_pointer_to_next loaded_pointer_to_head while_builder)
+            in
+            let () =
+              ignore(L.build_store loaded_pointer_to_next pointer_to_head while_builder)
+            in
+            let () =
+              ignore(L.build_store new_val iterator_alloc while_builder)
+            in
+            let () = add_terminal while_builder (L.build_br pred_bb) in
+            let merge_bb = L.append_block context "merge" the_function in
+            let merge_builder = L.builder_at_end context merge_bb in
+            let newly_loaded_pointer_to_head =
+              L.build_load pointer_to_head "TEMP" merge_builder
+            in
+            let pointer_to_current_val =
+              L.build_struct_gep newly_loaded_pointer_to_head 0 "TEMP" merge_builder
+            in
+            let () =
+              ignore(L.build_store e2' pointer_to_current_val merge_builder)
+            in
+            let pointer_to_current_flag =
+              L.build_struct_gep newly_loaded_pointer_to_head 2 "TEMP" merge_builder
+            in
+            let () =
+              ignore(L.build_store (L.const_int bool_t 0) pointer_to_current_flag merge_builder)
+            in
+            let empty_expr =
+              list_terminator (list_inner_type t)
+            in
+            let empty_var = L.build_alloca list_item_struct "TEMP" merge_builder in
+            let () =
+              ignore(L.build_store empty_expr empty_var merge_builder)
+            in
+            let pointer_to_next =
+              L.build_struct_gep newly_loaded_pointer_to_head 1 "TEMP" merge_builder
+            in
+            let () =
+              ignore(L.build_store empty_var pointer_to_next merge_builder)
+            in
+
+            let _ = L.build_cond_br comparison body_bb merge_bb pred_builder in
+            merge_builder
 
           | SIf (predicate, then_stmt, else_stmt) ->
             let bool_val = expr builder scope predicate in
