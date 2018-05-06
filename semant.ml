@@ -271,8 +271,9 @@ let check (_, statements) =
         SForDecl(e_ty, e1_id, (e_ty, e'), check_bool_expr scope e2, convert_expr scope e3, convert_statement scope st)
         (* TODO: fix to add better error message *)
         else raise(E.InvalidAssignment)
-  | ForEach(t, e1, e2) ->
-    SForEach(t, convert_expr scope e1, convert_expr scope e2)
+  | ForEach(t, var_name, e2, body) ->
+    let _ = add_variable scope t var_name in
+      SForEach(t, var_name, convert_expr scope e2, convert_statement scope body)
   | While(e, st) ->
     SWhile(convert_expr scope e, convert_statement scope st)
   | Return _ ->

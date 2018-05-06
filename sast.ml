@@ -42,7 +42,7 @@ type sstmt =
   | SIf of sexpr * sstmt * sstmt
   | SFor of sexpr * sexpr * sexpr * sstmt
   | SForDecl of typ * string * sexpr * sexpr * sexpr * sstmt
-  | SForEach of typ * sexpr * sexpr
+  | SForEach of typ * string * sexpr * sstmt
   | SWhile of sexpr * sstmt
 
 type sfunc_decl = {

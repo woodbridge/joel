@@ -85,7 +85,7 @@ let trans (_, statements) =
       A.Num -> num_list_item_pointer
     | A.Bool -> bool_list_item_pointer
     | A.String -> string_list_item_pointer
-    | _ -> raise(E.InvalidListType)
+    | _ -> raise(Failure("here: " ^ A.string_of_typ ty)) (* this one is where the error is happening. *)
   in
   let table_struct tys =
     L.struct_type context (Array.of_list (List.map get_list_pointer_type tys))
@@ -166,6 +166,7 @@ let trans (_, statements) =
   let get_init_noexpr = function
       A.Num -> L.const_float num_t 0.0
     | A.Bool -> L.const_int bool_t 0
+    | A.String -> L.const_pointer_null str_t
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
 
@@ -801,6 +802,34 @@ let trans (_, statements) =
               ( SBlock [SExpr e1 ;
                         SWhile(e2, SBlock[ body ;
                                            SExpr e3] ) ] ) builder
+
+          | SForEach(t, id, e2, body) ->
+            let index_var_name = "foreach_index" in
+              (* inital value *)
+              let expr_a = SStmtVDecl(Ast.Num, index_var_name, (Ast.Num, SIntegerLiteral(0))) in
+                let expr_x = SStmtVDecl(t, id, (Ast.Void, SNoexpr)) in
+
+                (* get the actual type of the list to pass to length call *)
+                let (ty, e2') = e2 in
+                  let list_length = match ty with
+                    List(ty) -> (Ast.Num, SLength (ty, e2') )
+                    | _ -> raise(Failure("fail"))
+                  in 
+
+                let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(index_var_name))), Less, list_length)) in
+                  let expr_c = (Ast.Num, SPop(index_var_name, Inc)) in 
+                    let list_lookup = (t, SListAccess(e2, (Ast.Num, SId(index_var_name))))
+                      in                      
+                    let list_lookup_assign = SExpr(t, SAssign(id, list_lookup)) in
+
+              build_statement scope
+
+              ( SBlock [ expr_a;
+                         expr_x;
+                        SWhile(expr_b, SBlock[ list_lookup_assign ;
+                                            body ;
+                                           SExpr expr_c] ) ] ) 
+              builder
 
           | _ as t ->
             let str = Sast.string_of_sstmt t in

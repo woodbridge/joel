@@ -41,7 +41,7 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | ForDecl of typ * string * expr * expr * expr * stmt
-  | ForEach of typ * expr * expr
+  | ForEach of typ * string * expr * stmt
   | While of expr * stmt
 
 type func_decl = {
@@ -80,12 +80,11 @@ let string_of_pop = function
     Inc -> "++"
   | Dec -> "--"
 
-
 let rec string_of_typ = function
     Num -> "num"
   | String -> "string"
   | Bool -> "bool"
-  | List(_) -> "list"
+  | List(t) -> "list: " ^ string_of_typ t
   | Dict -> "dict"
   | Table(lst) ->
       let concat_ocaml_string a b = a ^ (string_of_typ b) ^ " " in
