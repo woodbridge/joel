@@ -814,12 +814,12 @@ let trans (_, statements) =
                   let list_length = match ty with
                     List(ty) -> (Ast.Num, SLength (ty, e2') )
                     | _ -> raise(Failure("fail"))
-                  in 
+                  in
 
                 let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(index_var_name))), Less, list_length)) in
-                  let expr_c = (Ast.Num, SPop(index_var_name, Inc)) in 
+                  let expr_c = (Ast.Num, SPop(index_var_name, Inc)) in
                     let list_lookup = (t, SListAccess(e2, (Ast.Num, SId(index_var_name))))
-                      in                      
+                      in
                     let list_lookup_assign = SExpr(t, SAssign(id, list_lookup)) in
 
               build_statement scope
@@ -828,7 +828,7 @@ let trans (_, statements) =
                          expr_x;
                         SWhile(expr_b, SBlock[ list_lookup_assign ;
                                             body ;
-                                           SExpr expr_c] ) ] ) 
+                                           SExpr expr_c] ) ] )
               builder
 
           | _ as t ->
