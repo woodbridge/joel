@@ -115,6 +115,7 @@ let trans (_, statements) =
   let get_init_noexpr = function
       A.Num -> L.const_float num_t 0.0
     | A.Bool -> L.const_int bool_t 0
+    | A.String -> L.const_pointer_null str_t
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
 
@@ -686,7 +687,7 @@ let trans (_, statements) =
             let index_var_name = "foreach_index" in
               (* inital value *)
               let expr_a = SStmtVDecl(Ast.Num, index_var_name, (Ast.Num, SIntegerLiteral(0))) in
-                let expr_x = SStmtVDecl(Ast.Num, id, (Ast.Void, SNoexpr)) in
+                let expr_x = SStmtVDecl(t, id, (Ast.Void, SNoexpr)) in
 
                 (* get the actual type of the list to pass to length call *)
                 let (ty, e2') = e2 in
@@ -697,9 +698,9 @@ let trans (_, statements) =
 
                 let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(index_var_name))), Less, list_length)) in
                   let expr_c = (Ast.Num, SPop(index_var_name, Inc)) in 
-                    let list_lookup = (Ast.Num, SListAccess(e2, (Ast.Num, SId(index_var_name))))
-                      in
-                    let list_lookup_assign = SExpr(Ast.Num, SAssign(id, list_lookup)) in
+                    let list_lookup = (t, SListAccess(e2, (Ast.Num, SId(index_var_name))))
+                      in                      
+                    let list_lookup_assign = SExpr(t, SAssign(id, list_lookup)) in
 
               build_statement scope
 
