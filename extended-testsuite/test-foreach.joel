@@ -1,0 +1,11 @@
+num list foo = [1, 2, 3, 4, 5];
+
+string list bar = ["a", "b", "c"];
+
+foreach(num number in foo) {
+  printf(number);
+}
+
+foreach(string justin in bar) {
+  print(justin);
+}
