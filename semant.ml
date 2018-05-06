@@ -78,6 +78,27 @@ let check (_, statements) =
       let convert_pair (e1, e2) =
         (convert_expr scope e1, convert_expr scope e2)
       in (Dict, SDictLiteral(List.map convert_pair row))
+    | ListAccess(e1, e2) ->
+      let (t1, e1') = convert_expr scope e1
+      and (t2, e2') = convert_expr scope e2 in
+      let inner_ty = match t1 with
+          List(ty) -> ty
+        | _ -> raise( E.NonListAccess )
+      in
+      let is_valid = t2 = Num && (t1 = List(Num)
+                                  || t1 = List(Bool)
+                                  || t1 = List(String))
+      in
+      if is_valid then
+        (inner_ty, SListAccess((t1, e1'), (t2, e2')))
+      else raise(E.NonNumIndex)
+    | Length(e) ->
+      let (ty, e') =
+        convert_expr scope e
+      in let se = match ty with
+          List(ty) -> ( Num, SLength (ty, e') )
+          | _ -> raise( E.NonListLength )
+      in se
     | Binop(e1, op, e2) ->
       let (t1, e1') = convert_expr scope e1
       and (t2, e2') = convert_expr scope e2 in
@@ -156,7 +177,9 @@ let check (_, statements) =
         if t = Void &&
            (ty = List(Num) || ty = List(Bool) || ty = List(Dict)
             || ty = List(String) || ty = List(Table))
-          then SStmtVDecl(ty, id, (ty, e'))
+        then
+          let _ = add_variable scope ty id
+        in SStmtVDecl(ty, id, (ty, e'))
           else raise(E.InvalidAssignment)
       | _ -> raise(E.InvalidAssignment)
   in
@@ -170,6 +193,25 @@ let check (_, statements) =
   let rec convert_statement scope expr = match expr with
     Expr e -> SExpr(convert_expr scope e)
   | StmtVDecl(ty, id, exp) -> convert_vardecl scope (ty, id, exp) (* Returns a SStmtVDecl *)
+  | Append(e1, e2) ->
+    let (t1, e1') = convert_expr scope e1
+    and (t2, e2') = convert_expr scope e2 in
+    let inner_ty = match t1 with
+        List(ty) -> ty
+      | _ -> raise(E.InvalidArgument)
+    in let same_type = inner_ty = t2 in
+    if same_type then SAppend((t1, e1'), (t2, e2'))
+    else raise E.InvalidArgument
+  | Alter(e1, e2, e3) ->
+    let (t1, e1') = convert_expr scope e1
+    and (t2, e2') = convert_expr scope e2
+    and (t3, e3') = convert_expr scope e3 in
+    let inner_ty = match t1 with
+        List(ty) -> ty
+      | _ -> raise(E.InvalidArgument)
+    in let is_valid = inner_ty = t2 && t3 = Num in
+    if is_valid then SAlter((t1, e1'), (t2, e2'), (t3, e3'))
+    else raise E.InvalidArgument
   | Block sl ->
       let new_scope = {
               variables = StringMap.empty;

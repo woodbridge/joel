@@ -18,6 +18,8 @@ and sx =
   | SListLiteral of sexpr list
   | SDictLiteral of (sexpr * sexpr) list
   | STableLiteral of (sexpr list) list
+  | SListAccess of sexpr * sexpr
+  | SLength of sexpr
   | SId of string
   | SBinop of sexpr * op * sexpr
   | SUnop of uop * sexpr
@@ -32,6 +34,8 @@ type svar_decl = SVarDecl of typ * string * sexpr
 type sstmt =
     SBlock of sstmt list
   | SExpr of sexpr
+  | SAppend of sexpr * sexpr
+  | SAlter of sexpr * sexpr * sexpr
   | SStmtVDecl of typ * string * sexpr
   | SReturn of sexpr
   | SIf of sexpr * sstmt * sstmt

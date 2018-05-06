@@ -5,11 +5,11 @@ open Ast
 %}
 
 /* Token Declaration */
-%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI
+%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI ACCESS LENGTH
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
-%token RETURN IF ELSE FOR FOREACH IN WHILE INT BOOL FLOAT VOID
+%token RETURN IF ELSE FOR FOREACH IN WHILE INT BOOL FLOAT VOID APPEND ALTER
 %token AND OR XOR NOT
 
 
@@ -51,6 +51,10 @@ stmt_list:
 stmt:
   	expr SEMI 					                    { Expr $1	}
   | vdecl                                   { $1 }
+  | APPEND LPAREN expr COMMA expr RPAREN SEMI
+                                            { Append($3, $5)        }
+  | ALTER LPAREN expr COMMA expr COMMA expr RPAREN SEMI
+                                            { Alter($3, $5, $7)        }
   | RETURN expr_opt SEMI                    { Return $2             }
   | LBRACE stmt_list RBRACE                 { Block(List.rev $2)    }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
@@ -71,6 +75,10 @@ expr_opt:
 
 expr:
 	 primitives             { $1                      }
+  | ACCESS LPAREN expr COMMA expr RPAREN
+                          { ListAccess($3, $5)      }
+  | LENGTH LPAREN expr RPAREN
+                          { Length($3)              }
   | expr PLUS expr        { Binop($1, Add, $3)      }
   | expr MINUS expr       { Binop($1, Sub, $3)      }
   | expr TIMES expr       { Binop($1, Mult, $3)     }
@@ -116,6 +124,7 @@ primitives:
 list_literal:
     primitives                    { [$1]      }
   | list_literal COMMA primitives { $3 :: $1  }
+  | /* nothing */                 { []        }
 
 key_val:
     primitives COLON primitives   { ($1,$3)   }

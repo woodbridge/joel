@@ -37,6 +37,7 @@ rule token = parse
 | '>'      { GT }
 | ">="     { GEQ }
 | '&'	   { AND }
+| "get"	   { ACCESS }
 | '|'	   { OR }
 | '^'	   { XOR }
 | '!'	   { NOT }
@@ -56,6 +57,9 @@ rule token = parse
 | "void"   { VOID }
 | "true"   { TRUE }
 | "false"  { FALSE }
+| "append"   { APPEND }
+| "alter"   { ALTER }
+| "length"   { LENGTH }
 | digits as lxm { INT_LIT(int_of_string lxm) }
 | digits '.'  digit* ( ['e' 'E'] ['+' '-']? digits )? as lxm { FLOAT_LIT(lxm) }
 | '"' (([^ '"'] | "\\\"")* as strlit) '"' { STRING_LIT(strlit) }
