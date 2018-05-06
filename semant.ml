@@ -61,19 +61,42 @@ let check (_, statements) =
   	(* Convert an expr to a sexpr. *)
   	let rec convert_expr scope exp = match exp with
       StringLiteral s -> (String, SStringLiteral s)
-    | IntegerLiteral s -> (Num, SIntegerLiteral s)
+     | IntegerLiteral s -> (Num, SIntegerLiteral s)
     | FloatLiteral s -> (Num, SFloatLiteral s)
     | BoolLiteral s -> (Bool, SBoolLiteral s)
     | TableLiteral rows ->
-      let check_row row =
-        List.map (convert_expr scope) row
-      in (Table, STableLiteral(List.map check_row rows))
+      if List.length rows < 1 then (Table([Void]), SNoexpr)
+      else
+        let rec transpose lst = match lst with
+          | []             -> []
+          | []   :: xss    -> transpose xss
+          | (x::xs) :: xss ->
+            (x :: List.map List.hd xss) :: transpose (xs :: List.map List.tl xss)
+        in
+        let rows' = List.map (List.rev) rows in
+        let transposed_table = transpose rows' in
+        (* let (test_ty, _) = convert_expr scope (List.hd (List.hd transposed_table)) in *)
+        (* let () =
+          let print_all item =
+            let (test_ty, _) = convert_expr scope (List.hd item) in
+            Printf.printf "%s\n" (string_of_typ (test_ty)) in
+            ignore(List.map print_all transposed_table)
+        in *)
+        let check_row row = convert_expr scope (ListLiteral row) in
+        let row_type item =
+          let (ty, _) = convert_expr scope (List.hd item) in ty
+        in
+        (Table(List.map row_type transposed_table), STableLiteral(List.map check_row transposed_table))
     | ListLiteral row ->
       let (ty, _) =
         if List.length row > 0 then convert_expr scope (List.hd row)
         else (Void, SStringLiteral "")
       in
-      (List(ty), SListLiteral(List.map (convert_expr scope) row))
+      let check_type e =
+        let (ty2, e') = convert_expr scope e in
+        if ty2 = ty then (ty2, e') else raise(E.MixedTypes)
+      in
+      (List(ty), SListLiteral(List.map check_type row))
     | DictLiteral row ->
       let convert_pair (e1, e2) =
         (convert_expr scope e1, convert_expr scope e2)
@@ -85,13 +108,22 @@ let check (_, statements) =
           List(ty) -> ty
         | _ -> raise( E.NonListAccess )
       in
-      let is_valid = t2 = Num && (t1 = List(Num)
-                                  || t1 = List(Bool)
-                                  || t1 = List(String))
-      in
-      if is_valid then
-        (inner_ty, SListAccess((t1, e1'), (t2, e2')))
+      let is_valid = t2 = Num in
+      if is_valid then (inner_ty, SListAccess((t1, e1'), (t2, e2')))
       else raise(E.NonNumIndex)
+    | TableAccess(e1, i) ->
+      let (t1, e1') = convert_expr scope e1 in
+      let inner_ty = match t1 with
+          Table(ty) -> ty
+        | _ -> raise( E.NonListAccess )
+      in
+      let is_table = match t1 with
+          Table(_) -> true
+        | _ -> false
+      in
+      if is_table then
+        (List(List.nth inner_ty i), STableAccess((t1, e1'), i))
+      else raise(E.NonTableAccess)
     | Length(e) ->
       let (ty, e') =
         convert_expr scope e
@@ -175,12 +207,16 @@ let check (_, statements) =
       match e_ty with
         List(t) ->
         if t = Void &&
-           (ty = List(Num) || ty = List(Bool) || ty = List(Dict)
-            || ty = List(String) || ty = List(Table))
+           (ty = List(Num) || ty = List(Bool) || ty = List(String) )
         then
           let _ = add_variable scope ty id
         in SStmtVDecl(ty, id, (ty, e'))
-          else raise(E.InvalidAssignment)
+        else raise(E.InvalidAssignment)
+      | Table(lst) ->
+        if lst = [Void] || lst = [] then
+          let _ = add_variable scope ty id
+          in SStmtVDecl(ty, id, (ty, e'))
+        else raise(E.TestException(string_of_typ e_ty))
       | _ -> raise(E.InvalidAssignment)
   in
 

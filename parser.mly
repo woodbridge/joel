@@ -5,7 +5,7 @@ open Ast
 %}
 
 /* Token Declaration */
-%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI ACCESS LENGTH
+%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI ACCESS LENGTH TABLEACCESS
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
@@ -77,6 +77,8 @@ expr:
 	 primitives             { $1                      }
   | ACCESS LPAREN expr COMMA expr RPAREN
                           { ListAccess($3, $5)      }
+  | TABLEACCESS LPAREN expr COMMA INT_LIT RPAREN
+                          { TableAccess($3, $5) }
   | LENGTH LPAREN expr RPAREN
                           { Length($3)              }
   | expr PLUS expr        { Binop($1, Add, $3)      }
@@ -163,7 +165,8 @@ typ:
   | BOOL            { Bool    }
   | typ LIST        { List($1)}
   | DICT            { Dict    }
-  | TABLE           { Table   }
+  | TABLE LT typ_list GT
+                    {Table(List.rev $3)}
   | VOID            { Void    }
 
 args_opt:
@@ -173,3 +176,7 @@ args_opt:
 args_list:
     expr                    { [$1] }
   | args_list COMMA expr { $3 :: $1 }
+
+typ_list:
+    typ                    { [$1] }
+  | typ_list COMMA typ { $3 :: $1 }

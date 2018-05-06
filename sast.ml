@@ -17,8 +17,9 @@ and sx =
   | SBoolLiteral of bool
   | SListLiteral of sexpr list
   | SDictLiteral of (sexpr * sexpr) list
-  | STableLiteral of (sexpr list) list
+  | STableLiteral of sexpr list
   | SListAccess of sexpr * sexpr
+  | STableAccess of sexpr * int
   | SLength of sexpr
   | SId of string
   | SBinop of sexpr * op * sexpr

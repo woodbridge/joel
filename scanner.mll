@@ -38,6 +38,7 @@ rule token = parse
 | ">="     { GEQ }
 | '&'	   { AND }
 | "get"	   { ACCESS }
+| "getCol" { TABLEACCESS }
 | '|'	   { OR }
 | '^'	   { XOR }
 | '!'	   { NOT }
