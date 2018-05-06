@@ -698,9 +698,13 @@ let trans (_, statements) =
 
               build_statement scope
 
+              (* OKay, this is on hold until josh fixes da shit... *)
+
               ( SBlock [ expr_a;
                          expr_x;
-                        SWhile(expr_b, SBlock[  list_lookup_assign ;
+                        SWhile(expr_b, SBlock[ list_lookup_assign ;
+                                            SExpr(Ast.Void, SCall("printf", [(Ast.Num, SId("foreach_index"))]));
+                                            SExpr(Ast.Void, SCall("printf", [(Ast.Num, SListAccess(e2, (Ast.Num, SId("foreach_index"))))]));
                                             body ;
                                            SExpr expr_c] ) ] ) 
 
