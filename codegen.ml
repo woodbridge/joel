@@ -66,10 +66,6 @@ let trans (_, statements) =
   let printf_t = L.var_arg_function_type num_t [| L.pointer_type i8_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
 
-  (* Declare the free() builtin function *)
-  let free_t = L.function_type str_t [| str_t |] in 
-  let free_func = L.declare_function "free" free_t the_module in
-
   (* Declare the concat() c library function *)
   let concat_t = L.function_type str_t [| str_t; str_t|] in 
   let concat_func = L.declare_function "concat" concat_t the_module in
@@ -85,14 +81,9 @@ let trans (_, statements) =
       | None -> ignore (f builder)
   in
 
-  (* Keep track of any space we have allocated so we can free it at the end *)
-  let pointer_list = ref [] 
-  in
-
-  (* Free any alloc'd space, then add a "return 0" statement to the end of 
+  (* Add a "return 0" statement to the end of 
      a function (used to terminate the main function) *)
   let make_return builder =
-    (* List.iter (fun ptr -> let _ = L.build_call free_func [| ptr |] "free" builder in ()) !pointer_list; *)
     let t = L.build_ret (L.const_int i32_t 0) in
       add_terminal builder t
   in
@@ -183,8 +174,7 @@ let trans (_, statements) =
           | _ -> raise (Failure ("Internal Error: bad boolean operation"))
            ) e1' e2' "tmp" builder
          else if t = A.String then match op with
-            A.Add     -> let ptr = L.build_call concat_func [| e1' ; e2' |] "concat" builder
-                          in pointer_list := ptr::!pointer_list; ptr
+            A.Add     -> L.build_call concat_func [| e1' ; e2' |] "concat" builder
 
           | _ -> raise (Failure ("Internal Error: bad string operation"))
          else raise (Failure ("Internal Error: bad binop"))
