@@ -617,6 +617,117 @@ let trans (_, statements) =
             let  *)
 
           | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e builder in builder
+          | SAlter(e1, e2, e3) ->
+            let e1' = expr builder scope e1 in
+            let e2' = expr builder scope e2 in
+            let e3' = expr builder scope e3 in
+            let (t, _) = e1 in
+            let list_item_pointer = get_list_pointer_type (list_inner_type t) in
+            let list_item_struct = get_list_type (list_inner_type t) in
+            let copy_of_mem_addr =
+              L.build_alloca list_item_struct "TEMP" builder
+            in
+            let orig_mem_addr =
+              L.build_load e1' "TEMP" builder
+            in
+            let () =
+              ignore(L.build_store orig_mem_addr copy_of_mem_addr builder)
+            in
+            let pointer_to_head =
+              L.build_alloca list_item_pointer "TEMP" builder
+            in
+            let () =
+              ignore(L.build_store copy_of_mem_addr pointer_to_head builder)
+            in
+            let loaded_pointer_to_head =
+              L.build_load pointer_to_head "TEMP" builder
+            in
+            let pointer_to_flag =
+              L.build_struct_gep loaded_pointer_to_head 2 "TEMP" builder
+            in
+            let loaded_pointer_to_flag =
+              L.build_load pointer_to_flag "TEMP" builder
+            in
+            let current_flag =
+              L.build_alloca bool_t "TEMP" builder
+            in
+            let () =
+              ignore(L.build_store loaded_pointer_to_flag current_flag builder)
+            in
+            let iterator_alloc = L.build_alloca num_t "TEMP" builder in
+            let () =
+              ignore(L.build_store (L.const_float num_t 0.0) iterator_alloc builder)
+            in
+            let pred_bb = L.append_block context "while" the_function in
+            let _ = L.build_br pred_bb builder in
+            let pred_builder = L.builder_at_end context pred_bb in
+            let new_pointer_to_flag =
+              L.build_struct_gep loaded_pointer_to_head 2 "TEMP" pred_builder
+            in
+            let loaded_new_pointer_to_flag =
+              L.build_load new_pointer_to_flag "TEMP" pred_builder
+            in
+            let () =
+              ignore(L.build_store loaded_new_pointer_to_flag current_flag pred_builder)
+            in
+            let comparison =
+              L.build_fcmp L.Fcmp.Olt (L.build_load iterator_alloc "TEMP" pred_builder) e2' "TEMP" pred_builder
+            in
+            let body_bb = L.append_block context "while_body" the_function in
+            let while_builder = L.builder_at_end context body_bb in
+            let loaded_iterator = L.build_load iterator_alloc "TEMP" while_builder in
+            let new_val =
+              L.build_fadd loaded_iterator (L.const_float num_t 1.0) "TEMP" while_builder
+            in
+            let pointer_to_next =
+              L.build_struct_gep loaded_pointer_to_head 1 "TEMP" while_builder
+            in
+            let loaded_pointer_to_next =
+              L.build_load pointer_to_next "TEMP" while_builder
+            in
+            let dereferened_pointer_to_next =
+              L.build_load loaded_pointer_to_next "TEMP" while_builder
+            in
+            let () =
+              ignore(L.build_store dereferened_pointer_to_next loaded_pointer_to_head while_builder)
+            in
+            let () =
+              ignore(L.build_store loaded_pointer_to_next pointer_to_head while_builder)
+            in
+            let () =
+              ignore(L.build_store new_val iterator_alloc while_builder)
+            in
+            let () = add_terminal while_builder (L.build_br pred_bb) in
+
+            let iterator_check_bb = L.append_block context "check_iterator" the_function in
+            let iterator_check_builder = L.builder_at_end context iterator_check_bb in
+
+            let iterator_check =
+              L.build_fcmp L.Fcmp.Oeq (L.build_load iterator_alloc "TEMP" iterator_check_builder) (L.const_float num_t 0.0) "TEMP" iterator_check_builder
+            in
+            let handle_zero_bb = L.append_block context "handle_zero_case" the_function in
+            let handle_zero_builder = L.builder_at_end context handle_zero_bb in
+            let () =
+              ignore(L.build_store e1' pointer_to_head handle_zero_builder)
+            in
+            let merge_bb = L.append_block context "merge" the_function in
+            let merge_builder = L.builder_at_end context merge_bb in
+            let () = add_terminal handle_zero_builder (L.build_br merge_bb) in
+
+            let newly_loaded_pointer_to_head =
+              L.build_load pointer_to_head "TEMP" merge_builder
+            in
+            let pointer_to_current_val =
+              L.build_struct_gep newly_loaded_pointer_to_head 0 "TEMP" merge_builder
+            in
+            let () =
+              ignore(L.build_store e3' pointer_to_current_val merge_builder)
+            in
+
+            let _ = L.build_cond_br iterator_check handle_zero_bb merge_bb iterator_check_builder in
+            let _ = L.build_cond_br comparison body_bb iterator_check_bb pred_builder in
+            merge_builder
+
           | SAppend(e1, e2) ->
             let e1' = expr builder scope e1 in
             let e2' = expr builder scope e2 in
