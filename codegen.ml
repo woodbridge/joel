@@ -21,7 +21,7 @@ open Sast
 module StringMap = Map.Make(String)
 module E = Exceptions
 
-(* Data structure to represent the current scope and its parent. *)
+(* Data structure to represent the current scope, any malloc'd space, and the parent table. *)
 type var_table = {
   names: L.llvalue StringMap.t; (* Names bound in current block *)
   parent: var_table ref option; (* Enclosing scope *)
@@ -170,9 +170,13 @@ let trans (_, statements) =
     | _ -> raise (Failure ("Error: Not Yet Implemented"))
   in
 
-  (* Declare the printf builtin function *)
+  (* Declare the printf() builtin function *)
   let printf_t = L.var_arg_function_type num_t [| L.pointer_type i8_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
+
+  (* Declare the concat() c library function *)
+  let concat_t = L.function_type str_t [| str_t; str_t|] in 
+  let concat_func = L.declare_function "concat" concat_t the_module in
 
   (* Build a "main" function to enclose all statements in the program *)
   let main_ty = L.function_type i32_t [||] in
@@ -185,7 +189,8 @@ let trans (_, statements) =
       | None -> ignore (f builder)
   in
 
-  (* Add a "return 0" statement to the end of a function (used to terminate the main function) *)
+  (* Add a "return 0" statement to the end of 
+     a function (used to terminate the main function) *)
   let make_return builder =
     let t = L.build_ret (L.const_int i32_t 0) in
       add_terminal builder t
@@ -507,7 +512,8 @@ let trans (_, statements) =
             A.Add     -> L.build_fadd
           | A.Sub     -> L.build_fsub
           | A.Mult    -> L.build_fmul
-          | A.Div     -> L.build_fdiv  (* Todo: modulo *)
+          | A.Div     -> L.build_fdiv
+          | A.Mod     -> L.build_frem  (* Todo: modulo *)
           | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
           | A.Neq     -> L.build_fcmp L.Fcmp.One
           | A.Less    -> L.build_fcmp L.Fcmp.Olt
@@ -527,10 +533,10 @@ let trans (_, statements) =
           | A.Geq     -> L.build_icmp L.Icmp.Sge
           | _ -> raise (Failure ("Internal Error: bad boolean operation"))
            ) e1' e2' "tmp" builder
-         (* else if t = A.String then
-          in match op with
-            A.Add     -> L.build_global_stringptr (str1 ^ str2) "string" builder
-          | _ -> raise (Failure ("Internal Error: bad string operation")) *)
+         else if t = A.String then match op with
+            A.Add     -> L.build_call concat_func [| e1' ; e2' |] "concat" builder
+
+          | _ -> raise (Failure ("Internal Error: bad string operation"))
          else raise (Failure ("Internal Error: bad binop"))
 
         | SCall ("printf", [e]) -> L.build_call printf_func [| float_format_str ; (expr builder scope e) |] "printf" builder
