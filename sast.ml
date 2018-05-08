@@ -22,6 +22,7 @@ and sx =
   | STableAccess of sexpr * int
   | SLength of sexpr
   | SId of string
+  | SIn of string
   | SBinop of sexpr * op * sexpr
   | SUnop of uop * sexpr
   | SPop of string * pop
@@ -39,6 +40,7 @@ type sstmt =
   | SAlter of sexpr * sexpr * sexpr
   | SStmtVDecl of typ * string * sexpr
   | SReturn of sexpr
+  | SOut of sexpr list
   | SIf of sexpr * sstmt * sstmt
   | SFor of sexpr * sexpr * sexpr * sstmt
   | SForDecl of typ * string * sexpr * sexpr * sexpr * sstmt

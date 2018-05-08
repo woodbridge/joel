@@ -346,7 +346,12 @@ let trans (_, statements) =
     let builder = L.builder_at_end context (L.entry_block the_function) in
       let str_format_str  = L.build_global_stringptr "%s\n" "fmt" builder
       and int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
+      and num_format_str = L.build_global_stringptr "%f\n" "fmt" builder
+      and rounded_num_format_str = L.build_global_stringptr "%.2f\n" "fmt" builder
       and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
+      and csv_str_item_format_str  = L.build_global_stringptr "%s," "fmt" builder
+      and csv_num_item_format_str  = L.build_global_stringptr "%.2f," "fmt" builder
+      and csv_bool_item_format_str  = L.build_global_stringptr "%d," "fmt" builder
       in
 
       (* Define the global variable table. *)
@@ -591,6 +596,93 @@ let trans (_, statements) =
             in List.fold_left build builder sl
           (* | SAppend(e1, e2, e3) ->
             let  *)
+          | SOut column_list ->
+              if List.length column_list > 0 then 
+                let generated_lists = List.map (expr builder scope) column_list in
+                let length_exprs = 
+                  let apply_func i x = 
+                    let (t, _) = (List.nth column_list i) in
+                    L.build_call (list_length (list_inner_type t)) (Array.of_list [x]) "_FUNC_VAL" builder
+                  in
+                  List.mapi apply_func generated_lists  
+                in 
+                let iterator_alloc = L.build_alloca num_t "TEMP" builder in
+                let () =
+                  ignore(L.build_store (L.const_float num_t 0.0) iterator_alloc builder)
+                in
+                let pred_bb = L.append_block context "while" the_function in
+                let _ = L.build_br pred_bb builder in
+                let pred_builder = L.builder_at_end context pred_bb in
+                let comparison =
+                  L.build_fcmp L.Fcmp.Olt (L.build_load iterator_alloc "TEMP" pred_builder) (List.nth length_exprs 0) "TEMP" pred_builder
+                in
+                let body_bb = L.append_block context "while_body" the_function in
+                let while_builder = L.builder_at_end context body_bb in
+                let loaded_iterator = L.build_load iterator_alloc "TEMP" while_builder in
+
+                let print_item i x = 
+                  let (t, _) = List.nth column_list i in
+                  let t = list_inner_type t in
+                  let format = match t with
+                      A.Num -> csv_num_item_format_str
+                    | A.String -> csv_str_item_format_str
+                    | A.Bool -> csv_bool_item_format_str
+                    | _ -> raise(Failure("invalid table item"))
+                  in 
+                  let item =
+                    L.build_call (list_access t) (Array.of_list [x; loaded_iterator]) "_FUNC_VAL" while_builder
+                  in
+                  let value =
+                    L.build_struct_gep item 0 "TEMP" while_builder
+                  in
+                  let loaded_value = 
+                    L.build_load value "TEMP" while_builder
+                  in
+                  L.build_call printf_func [| format ; loaded_value |] "printf" while_builder
+                in 
+                (* get all but the last item because we only want commas after the first N-1 *)
+                let all_but_last = List.rev (List.tl (List.rev generated_lists)) in
+                let _ = List.mapi print_item all_but_last in
+                (* Print Last item *)
+                let (t, _) = List.hd (List.rev column_list) in
+                let t = list_inner_type t in
+                let last_list_expr = List.hd (List.rev generated_lists) in
+                let item =
+                  L.build_call (list_access t) (Array.of_list [last_list_expr; loaded_iterator]) "_FUNC_VAL" while_builder
+                in
+                let value =
+                  L.build_struct_gep item 0 "TEMP" while_builder
+                in
+                let loaded_value = 
+                  L.build_load value "TEMP" while_builder
+                in
+                let format = match t with
+                    A.Num -> rounded_num_format_str
+                  | A.String -> str_format_str
+                  | A.Bool -> int_format_str
+                  | _ -> raise(Failure("invalid table item"))
+                in
+                let _ = L.build_call printf_func [| format ; loaded_value |] "printf" while_builder
+                in
+
+                let new_val =
+                  L.build_fadd loaded_iterator (L.const_float num_t 1.0) "TEMP" while_builder
+                in
+                let () =
+                  ignore(L.build_store new_val iterator_alloc while_builder)
+                in
+                let () = add_terminal while_builder (L.build_br pred_bb) in
+                let merge_bb = L.append_block context "merge" the_function in
+                let _ = L.build_cond_br comparison body_bb merge_bb pred_builder in
+
+                L.builder_at_end context merge_bb
+            else builder
+
+
+(*               builder
+          let (t1, _) = e in
+          let e' = expr builder scope e in
+          L.build_call (list_length (t1)) (Array.of_list [e']) "_FUNC_VAL" builder *)
 
           | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e builder in builder
           | SAlter(e1, e2, e3) ->

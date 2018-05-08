@@ -5,7 +5,7 @@ open Ast
 %}
 
 /* Token Declaration */
-%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI ACCESS LENGTH TABLEACCESS TABLEAPPEND
+%token LPAREN RPAREN LBRACE RBRACE COMMA LSQBRACE RSQBRACE LPOINTY RPOINTY COLON SEMI ACCESS LENGTH TABLEACCESS TABLEAPPEND IN OUT
 %token ASSIGN PLUSASSIGN MINUSASSIGN TIMESASSIGN DIVIDEASSIGN MODASSIGN
 %token PLUS MINUS TIMES DIVIDE MOD INCREMENT DECREMENT
 %token EQ NEQ LT LEQ GT GEQ
@@ -37,26 +37,27 @@ open Ast
 %%
 
 program:
- 	decls EOF					    { $1	}
+  decls EOF             { $1  }
 
 decls:
-	  /* nothing */ 			{ ([], [])                 }
- 	| decls fdecl   			{ (($2 :: fst $1), snd $1) }
- 	| decls stmt 			    { (fst $1, ($2 :: snd $1)) }
+    /* nothing */       { ([], [])                 }
+  | decls fdecl         { (($2 :: fst $1), snd $1) }
+  | decls stmt          { (fst $1, ($2 :: snd $1)) }
 
 stmt_list:
     /* nothing */       { [] }
   | stmt_list stmt      { $2 :: $1 }
 
 stmt:
-  	expr SEMI 					                    { Expr $1	}
+    expr SEMI                               { Expr $1 }
   | vdecl                                   { $1 }
   | APPEND LPAREN expr COMMA expr RPAREN SEMI
                                             { Append($3, $5)        }
   | TABLEAPPEND LPAREN expr COMMA args_opt RPAREN SEMI
-                                            { TableAppend($3, $5)        }
+                                            { TableAppend($3, $5)   }
   | ALTER LPAREN expr COMMA expr COMMA expr RPAREN SEMI
-                                            { Alter($3, $5, $7)        }
+                                            { Alter($3, $5, $7)     }
+  | OUT LPAREN expr RPAREN SEMI             { Out($3)               }
   | RETURN expr_opt SEMI                    { Return $2             }
   | LBRACE stmt_list RBRACE                 { Block(List.rev $2)    }
   | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
@@ -76,13 +77,15 @@ expr_opt:
   | expr          { $1 }
 
 expr:
-	 primitives             { $1                      }
+   primitives             { $1                      }
   | ACCESS LPAREN expr COMMA expr RPAREN
                           { ListAccess($3, $5)      }
   | TABLEACCESS LPAREN expr COMMA INT_LIT RPAREN
                           { TableAccess($3, $5) }
   | LENGTH LPAREN expr RPAREN
-                          { Length($3)              }
+                          { Length($3) }
+  | IN LPAREN STRING_LIT RPAREN
+                          { In($3)                  }
   | expr PLUS expr        { Binop($1, Add, $3)      }
   | expr MINUS expr       { Binop($1, Sub, $3)      }
   | expr TIMES expr       { Binop($1, Mult, $3)     }
@@ -99,10 +102,10 @@ expr:
   | expr XOR expr         { Binop($1, Xor, $3)      }
   | NOT expr              { Unop(Not, $2)           }
   | MINUS expr %prec NEG  { Unop(Neg, $2)           }
-	| ID				            { Id($1)				          }
+  | ID                    { Id($1)                  }
   | ID INCREMENT          { Pop($1, Inc)            }
   | ID DECREMENT          { Pop($1, Dec)            }
-	| ID ASSIGN expr 		    { Assign($1, $3)		      }
+  | ID ASSIGN expr        { Assign($1, $3)          }
   | ID PLUSASSIGN expr    { AssignOp($1, Add, $3)   }
   | ID MINUSASSIGN expr   { AssignOp($1, Sub, $3)   }
   | ID TIMESASSIGN expr   { AssignOp($1, Mult, $3)  }
@@ -158,11 +161,11 @@ formal_list:
   | formal_list COMMA typ ID      { ($3,$4) :: $1 }
 
 vdecl:
-	  typ ID SEMI					          { StmtVDecl($1, $2, Noexpr)	}
-	| typ ID ASSIGN expr SEMI 	    { StmtVDecl($1, $2, $4)		  }
+    typ ID SEMI                   { StmtVDecl($1, $2, Noexpr) }
+  | typ ID ASSIGN expr SEMI       { StmtVDecl($1, $2, $4)     }
 
 typ:
-	NUM							  { Num 	  }
+  NUM               { Num     }
   | STRING          { String  }
   | BOOL            { Bool    }
   | typ LIST        { List($1)}
