@@ -29,7 +29,16 @@ type var_table = {
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
-let trans (_, statements) =
+let trans (functions, statements) =
+  (* Define the dummy fdecl dummy, which is needed by build_statement in order to properly check and 
+  construct return statements. *)
+  let dummy = {             (* This is never specifically checked. In the case an fdecl is needed, a *)
+      styp = A.Num;     (* proper one is supplied by build_function_body. *)
+      sfname = "_test";
+      sformals = [];
+      sbody = [];
+    }
+  in 
 
   let context    = L.global_context () in
 
@@ -144,6 +153,24 @@ let trans (_, statements) =
   (* Build a "main" function to enclose all statements in the program *)
   let main_ty = L.function_type i32_t [||] in
   let the_function = L.define_function "main" main_ty the_module in
+
+
+  (* Add function_decls to allow SCall expressions to these functions- *)
+  (* This way we can call define its formal, and call the function with *)
+  (* supplied argument. The function body is built later. *)
+  let function_decls =
+    let function_decl m fdecl =
+      let name = fdecl.sfname
+        and formal_types = 
+          Array.of_list (List.map (fun (t,_) -> ltype_of_typ t) fdecl.sformals)
+      in
+      let ftype = 
+        L.function_type (ltype_of_typ fdecl.styp) formal_types
+      in
+        StringMap.add name (L.define_function name ftype the_module, fdecl) m
+    in
+    List.fold_left function_decl StringMap.empty functions
+  in
 
   (* Add a terminator instruction f to wherever builder is located. *)
   let add_terminal builder f =
@@ -516,6 +543,18 @@ let trans (_, statements) =
         | SCall ("printf", [e]) -> L.build_call printf_func [| float_format_str ; (expr builder scope e) |] "printf" builder
         | SCall("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder scope e) |] "printf" builder
         | SCall("print", [e]) -> L.build_call printf_func [| str_format_str ; (expr builder scope e) |] "printf" builder
+        | SCall (f, act) ->
+          let (fdef, fdecl) = StringMap.find f function_decls
+          in
+          let actuals =
+            List.rev (List.map (expr builder scope) (List.rev act))
+          in
+          let result = 
+            (match fdecl.styp with 
+                  A.Void -> ""
+                | _ -> f ^ "_result") 
+          in
+          L.build_call fdef (Array.of_list actuals) result builder
         | SIn(st) -> expr builder scope (Parse_table.parse_file st)
         | _ -> raise (Failure ("Error: Expr Not yet Implemented")) 
 
@@ -581,9 +620,16 @@ let trans (_, statements) =
         | _ -> print_string ("Update error: " ^ name); raise Not_found
       in
 
-
       (* Build a single statement. Should return a builder. *)
-      let rec build_statement scope stmt builder = match stmt with
+      (* fdecl is either the dummy x fdecl at the top of codegen, *)
+      (* or it is the actual fdecl provided by build_function_body, *)
+      (* which is needed to properly construct a return statement. *)
+      let rec build_statement scope stmt builder fdecl = 
+          let the_function = 
+          if fdecl.sfname <> "_test" then fst (StringMap.find fdecl.sfname function_decls)
+          else the_function
+          in 
+          match stmt with
             SExpr e -> let _ = expr builder scope e in builder
 
           | SBlock sl ->
@@ -592,7 +638,7 @@ let trans (_, statements) =
               parent = Some(scope);
             }
             in let new_scope_r = ref new_scope in
-            let build builder stmt = build_statement new_scope_r stmt builder
+            let build builder stmt = build_statement new_scope_r stmt builder dummy
             in List.fold_left build builder sl
           (* | SAppend(e1, e2, e3) ->
             let  *)
@@ -933,12 +979,12 @@ let trans (_, statements) =
               let branch_instr = L.build_br merge_bb in
             (* create then bb *)
             let then_bb = L.append_block context "then" the_function in
-              let then_builder = build_statement scope then_stmt (L.builder_at_end context then_bb) in
+              let then_builder = build_statement scope then_stmt (L.builder_at_end context then_bb) dummy in
               let () = add_terminal then_builder branch_instr in
 
             (* create else bb *)
             let else_bb = L.append_block context "else" the_function in
-              let else_builder = build_statement scope else_stmt (L.builder_at_end context else_bb) in
+              let else_builder = build_statement scope else_stmt (L.builder_at_end context else_bb) dummy in
               let () = add_terminal else_builder branch_instr in
 
             let _ = L.build_cond_br bool_val then_bb else_bb builder in
@@ -964,7 +1010,7 @@ let trans (_, statements) =
               L.append_block context "while_body" the_function
             in
             let while_builder =
-              build_statement scope body (L.builder_at_end context body_bb)
+              build_statement scope body (L.builder_at_end context body_bb) dummy
             in
             let () =
               add_terminal while_builder (L.build_br pred_bb)
@@ -980,7 +1026,7 @@ let trans (_, statements) =
           | SFor(e1, e2, e3, body) -> build_statement scope
               ( SBlock [SExpr e1 ;
                         SWhile(e2, SBlock[ body ;
-                                           SExpr e3] ) ] ) builder
+                                           SExpr e3] ) ] ) builder dummy
 
           | SForEach(t, id, e2, body) ->
             let index_var_name = "foreach_index" in
@@ -1008,14 +1054,62 @@ let trans (_, statements) =
                         SWhile(expr_b, SBlock[ list_lookup_assign ;
                                             body ;
                                            SExpr expr_c] ) ] )
-              builder
+              builder fdecl
+
+          | SReturn e -> let _ = match fdecl.styp with
+                              (* Special "return nothing" instr *)
+                              A.Void -> L.build_ret_void builder 
+                              (* Build return statement *)
+                            | _ -> L.build_ret (expr builder scope e) builder 
+                     in builder
 
           | _ as t ->
             let str = Sast.string_of_sstmt t in
               Printf.printf "type: %s." str; raise (Failure ("Error: Not Yet Implemented"))
       in
+      let build_function_body fdecl =
+        let (a_func, _) = StringMap.find fdecl.sfname function_decls
+        in
+        let function_builder = L.builder_at_end context (L.entry_block a_func)
+        in
+        let function_names = 
+          let add_formal m (t, n) p = 
+            let () = 
+              L.set_value_name n p 
+            in
+            let local = 
+              L.build_alloca (ltype_of_typ t) n function_builder 
+            in
+            let _  = 
+              L.build_store p local function_builder 
+            in
+            StringMap.add n local m 
+          in
+          List.fold_left2 add_formal StringMap.empty fdecl.sformals
+              (Array.to_list (L.params a_func))
+        in
+        let
+        new_function_scope = {
+          names = function_names;
+          parent = Some(global_scope);
+          }
+        in
+        let new_function_scope_r = ref new_function_scope
+        in
+        let function_reducer f_builder stmt = 
+          build_statement new_function_scope_r stmt f_builder fdecl
+        in
+        let function_builder = List.fold_left function_reducer function_builder fdecl.sbody
+         in 
+          add_terminal function_builder (match fdecl.styp with
+            A.Void -> L.build_ret_void
+          | t -> L.build_ret (L.const_null (ltype_of_typ t)))
+      in
+      let _ = 
+        List.iter build_function_body functions
+      in
 
-        let statement_reducer builder stmt = build_statement global_scope stmt builder in
+        let statement_reducer builder stmt = build_statement global_scope stmt builder dummy in
           (* Builder gets updated with each call *)
           let final_builder = List.fold_left statement_reducer builder statements in
             make_return final_builder; ()
