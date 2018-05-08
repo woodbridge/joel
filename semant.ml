@@ -20,47 +20,47 @@ let check (_, statements) =
                                                     ("input", String) ]
 	in
 
-	(* Define the global variable table. *)
-  	let variable_table = {
-    	variables = StringMap.empty;
-    	parent = None;
-  	}
-  	in
+  (* Define the global variable table. *)
+    let variable_table = {
+      variables = StringMap.empty;
+      parent = None;
+    }
+    in
 
-  	(* Get a reference to the global table we just created.
+    (* Get a reference to the global table we just created.
     We will pass this scope via reference through recursive calls
     and mutate it when we need to add a new variable. *)
-  	let global_scope = ref variable_table
-  	in
+    let global_scope = ref variable_table
+    in
 
-  	(* Find a variable, beginning in a given scope and searching upwards. *)
-  	let rec find_variable (scope: symbol_table ref) name =
-    	try StringMap.find name !scope.variables
-    	with Not_found ->
-      		match !scope.parent with
-          	  Some(parent) -> find_variable (ref parent) name
-        	| _ -> raise (E.UndefinedId(name))
-  	in
+    (* Find a variable, beginning in a given scope and searching upwards. *)
+    let rec find_variable (scope: symbol_table ref) name =
+      try StringMap.find name !scope.variables
+      with Not_found ->
+          match !scope.parent with
+              Some(parent) -> find_variable (ref parent) name
+          | _ -> raise (E.UndefinedId(name))
+    in
 
-  	(* Map a variable's name to its type in the symbol table. *)
-   	let add_variable (scope: symbol_table ref) t n =
-   		try let _ = StringMap.find n !scope.variables in raise (E.DuplicateVariable(n))
-   		with Not_found ->
-      	scope := {
-        	variables = StringMap.add n t !scope.variables;
-        	parent = !scope.parent;
-      	}
-  	in
+    (* Map a variable's name to its type in the symbol table. *)
+    let add_variable (scope: symbol_table ref) t n =
+      try let _ = StringMap.find n !scope.variables in raise (E.DuplicateVariable(n))
+      with Not_found ->
+        scope := {
+          variables = StringMap.add n t !scope.variables;
+          parent = !scope.parent;
+        }
+    in
 
-  	(* Raise an exception if the given rvalue type cannot be assigned to
+    (* Raise an exception if the given rvalue type cannot be assigned to
      the given lvalue type *)
-  	let check_assign lvaluet rvaluet =
-    	if lvaluet = rvaluet then lvaluet
-    	else raise (E.InvalidAssignment)
-  	in
+    let check_assign lvaluet rvaluet =
+      if lvaluet = rvaluet then lvaluet
+      else raise (E.InvalidAssignment)
+    in
 
-  	(* Convert an expr to a sexpr. *)
-  	let rec convert_expr scope exp = match exp with
+    (* Convert an expr to a sexpr. *)
+    let rec convert_expr scope exp = match exp with
       StringLiteral s -> (String, SStringLiteral s)
     | IntegerLiteral s -> (Num, SIntegerLiteral s)
     | FloatLiteral s -> (Num, SFloatLiteral s)
@@ -143,7 +143,7 @@ let check (_, statements) =
         | And | Or | Xor when same_type && t1 = Bool -> Bool
         | Add when same_type && t1 = String -> String
         | _ -> raise (E.InvalidBinaryOperation)
-  	      (* Failure ("illegal binary operator " ^   <<<<< pretty print needed
+          (* Failure ("illegal binary operator " ^   <<<<< pretty print needed
                          string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
                          string_of_typ t2 ^ " in " ^ string_of_expr e)) *)
         in (ty, SBinop((t1, e1'), op, (t2, e2')))
@@ -240,7 +240,7 @@ let check (_, statements) =
     if same_type then SAppend((t1, e1'), (t2, e2'))
     else raise E.InvalidArgument
   | TableAppend(e1, e2) ->
-    convert_statement scope (Block( (List.mapi (fun i a -> Append(TableAccess(e1, i), List.nth e2 i)) e2) ) )
+    convert_statement scope (Block( (List.mapi (fun i _ -> Append(TableAccess(e1, i), List.nth e2 i)) e2) ) )
   | Alter(e1, e2, e3) ->
     let (t1, e1') = convert_expr scope e1
     and (t2, e2') = convert_expr scope e2
