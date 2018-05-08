@@ -124,43 +124,6 @@ let trans (_, statements) =
     L.const_null new_table_type
   in
 
-  let empty_table tys builder =
-    let new_table_type = table_struct tys in
-    let store_list_terminator ty =
-      let item = list_terminator ty in
-      let item_pointer =
-        L.build_alloca (get_list_type ty) "TEMP" builder
-      in
-      let () =
-        ignore(L.build_store item item_pointer builder)
-      in
-      item_pointer
-    in
-    let list_heads = List.map store_list_terminator tys in
-    let null_table = L.const_null new_table_type in
-    let new_table =
-      L.build_alloca (table_struct tys) "TEMP" builder
-    in
-    let () =
-      ignore(L.build_store null_table new_table builder)
-    in
-    let rec initialize_list_head i =
-      if i>=0 then
-        let list_head = List.nth list_heads i in
-
-        let pointer_to_item =
-          L.build_struct_gep new_table i "TEMP" builder
-        in
-        let () =
-          ignore(L.build_store list_head pointer_to_item builder)
-        in
-        initialize_list_head (i-1)
-      else new_table
-    in
-    initialize_list_head ((List.length list_heads) - 1)
-  in
-
-
   (* If a variable is declared but not assigned a value, give it a placeholder value
     according to its type so we can store it in the symbol table. *)
   let get_init_noexpr = function
@@ -923,12 +886,12 @@ let trans (_, statements) =
                 (* get the actual type of the list to pass to length call *)
                 let (ty, e2') = e2 in
                   let list_length = match ty with
-                    List(ty) -> (Ast.Num, SLength (ty, e2') )
+                      A.List(ty) -> (A.Num, SLength (ty, e2') )
                     | _ -> raise(Failure("fail"))
                   in
 
-                let expr_b = (Ast.Bool, SBinop((Ast.Num, (SId(index_var_name))), Less, list_length)) in
-                  let expr_c = (Ast.Num, SPop(index_var_name, Inc)) in
+                let expr_b = (A.Bool, SBinop((A.Num, (SId(index_var_name))), A.Less, list_length)) in
+                  let expr_c = (A.Num, SPop(index_var_name, A.Inc)) in
                     let list_lookup = (t, SListAccess(e2, (Ast.Num, SId(index_var_name))))
                       in
                     let list_lookup_assign = SExpr(t, SAssign(id, list_lookup)) in
