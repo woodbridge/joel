@@ -37,12 +37,14 @@ rule token = parse
 | '>'      { GT }
 | ">="     { GEQ }
 | '&'	   { AND }
-| "get"	   { ACCESS }
-| "getCol" { TABLEACCESS }
-| "addRow" { TABLEAPPEND }
 | '|'	   { OR }
 | '^'	   { XOR }
 | '!'	   { NOT }
+| "in"	   { IN }
+| "out"	   { OUT }
+| "get"	   { ACCESS }
+| "getCol" { TABLEACCESS }
+| "addRow" { TABLEAPPEND }
 | "if"     { IF }
 | "else"   { ELSE }
 | "for"    { FOR }

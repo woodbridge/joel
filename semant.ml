@@ -16,8 +16,7 @@ let check (_, statements) =
         body = [] } map
       in List.fold_left add_bind StringMap.empty [  ("printf", Num);
                                                     ("printb", Bool);
-                                                    ("print", String);
-                                                    ("input", String) ]
+                                                    ("print", String) ]
   in
 
   (* Define the global variable table. *)
@@ -179,6 +178,7 @@ let check (_, statements) =
           in (ty, SAssignOp(id, op, (rt, e')))
     | Noexpr -> (Void, SNoexpr)
     | Id s -> (find_variable scope s, SId s)
+    | In s -> (Table([Void]), SIn s)
     | Call(fname, args) ->
         let fd = StringMap.find fname built_in_decls in
         let param_length = List.length fd.formals in
@@ -252,6 +252,13 @@ let check (_, statements) =
     else raise E.InvalidArgument
   | TableAppend(e1, e2) ->
     convert_statement scope (Block( (List.mapi (fun i _ -> Append(TableAccess(e1, i), List.nth e2 i)) e2) ) )
+  | Out(e) -> 
+      let (t, e') = convert_expr scope e in
+      let inner_tys = match t with 
+          Table(tys) -> tys
+        | _ -> raise(E.InvalidArgument) 
+      in let column_lists = List.mapi (fun i x -> (List(x), STableAccess((t, e'), i))) inner_tys
+      in SOut column_lists
   | Alter(e1, e2, e3) ->
     let (t1, e1') = convert_expr scope e1
     and (t2, e2') = convert_expr scope e2

@@ -23,6 +23,7 @@ type expr =
   | TableAccess of expr * int
   | Length of expr
   | Id of string
+  | In of string
   | Binop of expr * op * expr
   | Unop of uop * expr
   | Pop of string * pop
@@ -37,6 +38,7 @@ type stmt =
   | Append of expr * expr
   | TableAppend of expr * expr list
   | Alter of expr * expr * expr
+  | Out of expr
   | StmtVDecl of typ * string * expr
   | Return of expr
   | If of expr * stmt * stmt
@@ -102,6 +104,7 @@ let rec string_of_expr = function
   | ListAccess(_, _) -> "List Access"
   | TableAccess(_, _) -> "Table Access"
   | Length(_) -> "List Length"
+  | In(_) -> "Table"
   | DictLiteral(_) -> "Dict"
   | TableLiteral(rows) -> 
     let string_of_row row =
