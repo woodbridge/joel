@@ -103,7 +103,11 @@ let rec string_of_expr = function
   | TableAccess(_, _) -> "Table Access"
   | Length(_) -> "List Length"
   | DictLiteral(_) -> "Dict"
-  | TableLiteral(_) -> "Table"
+  | TableLiteral(rows) -> 
+    let string_of_row row =
+      String.concat ", " (List.map string_of_expr (List.rev row))
+        in
+          "(" ^ String.concat ";\n" (List.map string_of_row rows) ^ ")\n"
   | Call(s, _) -> s ^ "()"
   | Id(s) -> s
   | Binop(e1, op, e2) -> string_of_expr e1 ^ " " ^ string_of_op op ^ " " ^ string_of_expr e2

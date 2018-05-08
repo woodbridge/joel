@@ -288,3 +288,37 @@ let check (_, statements) =
 
   let statements' = List.map convert_statements (List.rev statements)
 in(built_in_decls, statements')
+
+
+let rec convert_csv exp = match exp with
+    StringLiteral s -> (String, SStringLiteral s)
+  | IntegerLiteral s -> (Num, SIntegerLiteral s)
+  | FloatLiteral s -> (Num, SFloatLiteral s)
+  | TableLiteral rows ->
+    if List.length rows < 1 then (Table([Void]), SNoexpr)
+    else
+      let rec transpose lst = match lst with
+      | []             -> []
+      | []   :: xss    -> transpose xss
+      | (x::xs) :: xss ->
+        (x :: List.map List.hd xss) :: transpose (xs :: List.map List.tl xss)
+      in
+      let rows' = List.map (List.rev) rows in
+      let transposed_table = transpose rows' in
+      let check_row row = convert_csv (ListLiteral row) in
+        let row_type item =
+          let (ty, _) = convert_csv (List.hd item) in ty
+        in
+        (Table(List.map row_type transposed_table), STableLiteral(List.map check_row transposed_table))
+  | ListLiteral row ->
+    let (ty, _) =
+      if List.length row > 0 then convert_csv (List.hd row)
+      else (Void, SStringLiteral "")
+    in
+    let check_type e =
+      let (ty2, e') = convert_csv e in
+      if ty2 = ty then (ty2, e') else raise(E.MixedTypes)
+    in
+    (List(ty), SListLiteral(List.map check_type row))
+  | _ -> raise(Failure "Invalid csv type")
+
