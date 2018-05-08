@@ -40,7 +40,7 @@ rule token = parse
 | '|'	   { OR }
 | '^'	   { XOR }
 | '!'	   { NOT }
-| "in"	   { IN }
+| "input"	{ INPUT }
 | "out"	   { OUT }
 | "get"	   { ACCESS }
 | "getCol" { TABLEACCESS }
@@ -49,7 +49,7 @@ rule token = parse
 | "else"   { ELSE }
 | "for"    { FOR }
 | "foreach" { FOREACH }
-| "in"     { IN }
+| "in"  	{ IN }
 | "while"  { WHILE }
 | "return" { RETURN }
 | "num"    { NUM }
