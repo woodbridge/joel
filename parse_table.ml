@@ -6,6 +6,7 @@ let parse_file file =
 	let table = Table_parser.table Table_scanner.token lexbuf in  
 	Semant.convert_csv table 
 
-(* let test =
-	let file = "test.csv" in
-	print_string (Sast.string_of_sexpr (parse_file file)) *)
+let test file =
+	print_string (Sast.string_of_sexpr (parse_file file))
+
+(* let () = test "censuspops.csv" *)
