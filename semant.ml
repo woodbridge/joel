@@ -16,7 +16,8 @@ let check (_, statements) =
 	      body = [] } map
 	    in List.fold_left add_bind StringMap.empty [  ("printf", Num);
 	                                                  ("printb", Bool);
-	                                                  ("print", String) ]
+	                                                  ("print", String);
+                                                    ("in", String) ]
 	in
 
 	(* Define the global variable table. *)

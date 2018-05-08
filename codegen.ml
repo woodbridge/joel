@@ -542,7 +542,8 @@ let trans (_, statements) =
         | SCall ("printf", [e]) -> L.build_call printf_func [| float_format_str ; (expr builder scope e) |] "printf" builder
         | SCall("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder scope e) |] "printf" builder
         | SCall("print", [e]) -> L.build_call printf_func [| str_format_str ; (expr builder scope e) |] "printf" builder
-        | _ -> raise (Failure ("Error: Not Yet Implemented"))
+        | SCall("in", [(_, SStringLiteral (st))]) -> expr builder scope (Parse_table.parse_file st)
+        | _ -> raise (Failure ("Error: Not yet Implemented")) 
 
       and build_list t e (scope: var_table ref) builder =
         let list_item_struct = get_list_type t in
