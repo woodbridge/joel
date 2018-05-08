@@ -8,17 +8,17 @@ module E = Exceptions
 
 let check (_, statements) =
 
-	(* Collect function declarations for built-in functions: no bodies *)
-	let built_in_decls =
-	    let add_bind map (name, ty) = StringMap.add name {
-	      typ = Void; fname = name;
-	      formals = [(ty, "x")];
-	      body = [] } map
-	    in List.fold_left add_bind StringMap.empty [  ("printf", Num);
-	                                                  ("printb", Bool);
-	                                                  ("print", String);
+  (* Collect function declarations for built-in functions: no bodies *)
+  let built_in_decls =
+      let add_bind map (name, ty) = StringMap.add name {
+        typ = Void; fname = name;
+        formals = [(ty, "x")];
+        body = [] } map
+      in List.fold_left add_bind StringMap.empty [  ("printf", Num);
+                                                    ("printb", Bool);
+                                                    ("print", String);
                                                     ("input", String) ]
-	in
+  in
 
   (* Define the global variable table. *)
     let variable_table = {
@@ -218,6 +218,17 @@ let check (_, statements) =
           let _ = add_variable scope ty id
           in SStmtVDecl(ty, id, (ty, e'))
         else raise(E.TestException(string_of_typ e_ty))
+      | Void -> 
+          let ty' = match e with 
+        (* If we see a call to input, just let it pass through 
+         * with the user assigned type, let it be handled at runtime
+         * *)
+            Call(fname, _) -> 
+              if fname = "input" 
+              then ty
+              else raise(E.InvalidAssignment) 
+          | _ -> raise(E.InvalidAssignment)
+          in SStmtVDecl(ty', id, (ty', e'))
       | _ -> raise(E.InvalidAssignment)
   in
 
