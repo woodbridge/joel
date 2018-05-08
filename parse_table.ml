@@ -4,10 +4,8 @@ let parse_file file =
 	let ic = open_in file in
 	let lexbuf = Lexing.from_channel ic in
 	let table = Table_parser.table Table_scanner.token lexbuf in  
-	(* let stable = *) Semant.convert_csv table (* in
-	print_string (Sast.string_of_sexpr stable) *)
+	Semant.convert_csv table 
 
-let () =
+(* let test =
 	let file = "test.csv" in
-	ignore(parse_file file)
-
+	print_string (Sast.string_of_sexpr (parse_file file)) *)
