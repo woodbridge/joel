@@ -1,0 +1,122 @@
+/*
+* COLUMNS
+* 0: Zip Code
+* 1: Total Population
+* 2: Median Age
+* 3: Total Males
+* 4: Total Females
+* 5: Total Households
+* 6: Average Household Size
+*/
+
+table<num, num, num, num, num, num, num> pop = input("censuspops.csv");
+num list numMales = getCol(pop, 3);
+num list numFemales = getCol(pop, 4);
+num size = length(numMales);
+
+num i = 0;
+num highest_wtm = -1;
+num highest_wtm_index = 0;
+num highest_mtw = -1;
+num highest_mtw_index = 0;
+
+for(i; i < size; i++) {
+	num men = get(numMales, i);
+	num women = get(numFemales, i);
+
+	if(men > 0) {
+		num ratio = women / men;
+		if(ratio > highest_wtm) {
+			highest_wtm = ratio;
+			highest_wtm_index = i;
+		}
+	}
+
+	if(women > 0) {
+		num ratio = men / women;
+		if(ratio > highest_mtw) {
+			highest_mtw = ratio;
+			highest_mtw_index = i;
+		}
+	}
+}
+
+num list zips = getCol(pop, 0);
+
+print("HIGHEST RATIO OF WOMEN TO MEN");
+printf(highest_wtm);
+print("IN ZIPCODE");
+printf(get(zips, highest_wtm_index));
+
+print("HIGHEST RATIO OF MEN TO WOMEN");
+printf(highest_mtw);
+print("IN ZIPCODE");
+printf(get(zips, highest_mtw_index));
+
+/* Does the median age have an impact on gender ratios?
+ * We will perform a chi-squared test to find out. */
+
+num list total_pop_zip = getCol(pop, 1);
+num list median_age_zip = getCol(pop, 2);
+
+/* Find the total number of men */
+num total_men = 0;
+foreach(num men in numMales) {
+	total_men += men;
+}
+
+/* Find the total number of women */
+num total_women = 0;
+foreach(num women in numFemales) {
+	total_women += women;
+}
+
+/* Find the total population of Los Angeles */
+num total_pop = 0;
+foreach(num popu in total_pop_zip) {
+	total_pop += popu;
+}
+
+/* Create an estimated expected table for our chi-squared test
+ * The layout of the table is median age, number of men, number of women */
+table<num, num, num> est_expected = <>;
+
+num row = 0;
+num col = 0;
+for(row; row < size; row++) {
+
+	/* Estimated Expected = (row total)(column total)/(total population) */
+	num total_pop_row = get(total_pop_zip, row);
+	num ee_men = total_pop_row * total_men / total_pop;
+	num ee_women = total_pop_row * total_women / total_pop;
+
+	num median_age_row = get(median_age_zip, row);
+
+	addRow(est_expected, median_age_row, ee_men, ee_women);
+}
+
+/* Calculate chi squared = sum((observed - estimated expected)^2 / estimated expected) */
+
+num list men_est_expected = getCol(est_expected, 1);
+num list women_est_expected = getCol(est_expected, 2);
+
+num chi_squared = 0;
+row = 0;
+for(row; row < size; row++) {
+	num m_contribution = get(numMales, row) - get(men_est_expected, row);
+	m_contribution *= m_contribution;
+	m_contribution /= get(men_est_expected, row);
+
+	chi_squared += m_contribution;
+
+	num w_contribution = get(numFemales, row) - get(women_est_expected, row);
+	w_contribution *= w_contribution;
+	w_contribution /= get(women_est_expected, row);
+
+	printf(w_contribution);
+	chi_squared += w_contribution;
+}
+
+printf(chi_squared);
+
+
