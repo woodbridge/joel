@@ -228,6 +228,7 @@ let check (_, statements) =
               then ty
               else raise(E.InvalidAssignment) 
           | _ -> raise(E.InvalidAssignment)
+          in let _ = add_variable scope ty id
           in SStmtVDecl(ty', id, (ty', e'))
       | _ -> raise(E.InvalidAssignment)
   in

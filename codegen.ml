@@ -103,7 +103,7 @@ let trans (_, statements) =
     | A.String -> str_t
     | A.List(t) -> get_list_pointer_type t
     | A.Table(t) -> table_struct_pointer t
-    | _ -> raise (Failure ("Error: Not Yet Implemented " ^ (A.string_of_typ ty)))
+    | _ -> raise (Failure ("Error: Type Not Yet Implemented " ^ (A.string_of_typ ty)))
   in
 
 
@@ -130,7 +130,7 @@ let trans (_, statements) =
       A.Num -> L.const_float num_t 0.0
     | A.Bool -> L.const_int bool_t 0
     | A.String -> L.const_pointer_null str_t
-    | _ -> raise (Failure ("Error: Not Yet Implemented"))
+    | _ -> raise (Failure ("Error: NoExpr Not Yet Implemented"))
   in
 
   (* Declare the printf() builtin function *)
@@ -472,6 +472,12 @@ let trans (_, statements) =
             | A.Dec -> A.Sub
           ), (t, SIntegerLiteral(1))))))); prev
 
+        | SUnop(op, e) ->
+          let e' = expr builder scope e in
+          (match op with
+              A.Neg -> L.build_fneg
+            | A.Not     -> L.build_not) e' "tmp" builder
+
         | SBinop (e1, op, e2) ->
          let (t, _) = e1
          and e1' = expr builder scope e1
@@ -481,7 +487,7 @@ let trans (_, statements) =
           | A.Sub     -> L.build_fsub
           | A.Mult    -> L.build_fmul
           | A.Div     -> L.build_fdiv
-          | A.Mod     -> L.build_frem  (* Todo: modulo *)
+          | A.Mod     -> L.build_frem 
           | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
           | A.Neq     -> L.build_fcmp L.Fcmp.One
           | A.Less    -> L.build_fcmp L.Fcmp.Olt
@@ -511,7 +517,7 @@ let trans (_, statements) =
         | SCall("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder scope e) |] "printf" builder
         | SCall("print", [e]) -> L.build_call printf_func [| str_format_str ; (expr builder scope e) |] "printf" builder
         | SCall("input", [(_, SStringLiteral (st))]) -> expr builder scope (Parse_table.parse_file st)
-        | _ -> raise (Failure ("Error: Not yet Implemented")) 
+        | _ -> raise (Failure ("Error: Expr Not yet Implemented")) 
 
       and build_list t e (scope: var_table ref) builder =
         let list_item_struct = get_list_type t in
