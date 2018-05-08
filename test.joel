@@ -53,8 +53,10 @@ printf(highest_mtw);
 print("IN ZIPCODE");
 printf(get(zips, highest_mtw_index));
 
-/* Does the median age have an impact on gender ratios?
- * We will perform a chi-squared test to find out. */
+
+/* Does the median age of a zipcode have an impact on gender ratios?
+ * First, we will use a chi-squared test to determine if gender ratios
+ * differ by zipcode */
 
 num list total_pop_zip = getCol(pop, 1);
 num list median_age_zip = getCol(pop, 2);
@@ -79,10 +81,9 @@ foreach(num popu in total_pop_zip) {
 
 /* Create an estimated expected table for our chi-squared test
  * The layout of the table is median age, number of men, number of women */
-table<num, num, num> est_expected = <>;
+table<num, num> est_expected = <>;
 
 num row = 0;
-num col = 0;
 for(row; row < size; row++) {
 
 	/* Estimated Expected = (row total)(column total)/(total population) */
@@ -92,13 +93,13 @@ for(row; row < size; row++) {
 
 	num median_age_row = get(median_age_zip, row);
 
-	addRow(est_expected, median_age_row, ee_men, ee_women);
+	addRow(est_expected, ee_men, ee_women);
 }
 
 /* Calculate chi squared = sum((observed - estimated expected)^2 / estimated expected) */
 
-num list men_est_expected = getCol(est_expected, 1);
-num list women_est_expected = getCol(est_expected, 2);
+num list men_est_expected = getCol(est_expected, 0);
+num list women_est_expected = getCol(est_expected, 1);
 
 num chi_squared = 0;
 row = 0;
@@ -113,10 +114,22 @@ for(row; row < size; row++) {
 	w_contribution *= w_contribution;
 	w_contribution /= get(women_est_expected, row);
 
-	printf(w_contribution);
 	chi_squared += w_contribution;
 }
 
+print("CHI-SQUARED VALUE");
 printf(chi_squared);
 
+print("num datapoints=");
+printf(size);
 
+/* It should print 18554.1 */
+/* Based on this chi-squared value, gender ratios definitely differ depending on zipcode! */
+
+/* Create a new table: median age, number of men, number of women */
+table<num, num> age_gender_ratios = <>;
+
+row = 0;
+for(row; row < size; row++) {
+	addRow(age_gender_ratios, get(median_age_zip, row), get(numFemales, row)/get(numMales, row));
+}
