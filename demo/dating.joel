@@ -1,0 +1,63 @@
+
+/* You've just moved to LA, and you want to spend a night on the town!
+ * You want to find the best area to hang tight with the young'uns of your
+ * preferred gender. */
+
+/*
+* COLUMNS
+* 0: Zip Code
+* 1: Total Population
+* 2: Median Age
+* 3: Total Males
+* 4: Total Females
+* 5: Total Households
+* 6: Average Household Size
+*/
+
+table<num, num, num, num, num, num, num> pop = input("censuspops.csv");
+
+num list zips = getCol(pop, 0);
+num list median_age_zip = getCol(pop, 2);
+num list numMales = getCol(pop, 3);
+num list numFemales = getCol(pop, 4);
+
+num size = length(numMales);
+
+num highest_wtm = -1;
+num highest_wtm_index = 0;
+
+num highest_mtw = -1;
+num highest_mtw_index = 0;
+
+num row = 0;
+for(row; row < size; row++) {
+	num men = get(numMales, row);
+	num women = get(numFemales, row);
+	num medianAge = get(median_age_zip, row);
+
+	if(men > 0 & medianAge < 30) {
+		num ratio = women / men;
+		if(ratio > highest_wtm) {
+			highest_wtm = ratio;
+			highest_wtm_index = row;
+		}
+	}
+
+	if(women > 0 & medianAge < 30) {
+		num ratio = men / women;
+		if(ratio > highest_mtw) {
+			highest_mtw = ratio;
+			highest_mtw_index = row;
+		}
+	}
+}
+
+print("YOUNG AREA W HIGHEST RATIO OF WOMEN TO MEN");
+printf(highest_wtm);
+print("IN ZIPCODE");
+printf(get(zips, highest_wtm_index));
+
+print("YOUNG AREA W HIGHEST RATIO OF MEN TO WOMEN");
+printf(highest_mtw);
+print("IN ZIPCODE");
+printf(get(zips, highest_mtw_index));

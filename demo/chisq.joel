@@ -1,3 +1,7 @@
+
+/* We will use a chi-squared test to determine if gender ratios
+ * differ by zipcode */
+
 /*
 * COLUMNS
 * 0: Zip Code
@@ -10,53 +14,11 @@
 */
 
 table<num, num, num, num, num, num, num> pop = input("censuspops.csv");
+
 num list numMales = getCol(pop, 3);
 num list numFemales = getCol(pop, 4);
+
 num size = length(numMales);
-
-num i = 0;
-num highest_wtm = -1;
-num highest_wtm_index = 0;
-num highest_mtw = -1;
-num highest_mtw_index = 0;
-
-for(i; i < size; i++) {
-	num men = get(numMales, i);
-	num women = get(numFemales, i);
-
-	if(men > 0) {
-		num ratio = women / men;
-		if(ratio > highest_wtm) {
-			highest_wtm = ratio;
-			highest_wtm_index = i;
-		}
-	}
-
-	if(women > 0) {
-		num ratio = men / women;
-		if(ratio > highest_mtw) {
-			highest_mtw = ratio;
-			highest_mtw_index = i;
-		}
-	}
-}
-
-num list zips = getCol(pop, 0);
-
-print("HIGHEST RATIO OF WOMEN TO MEN");
-printf(highest_wtm);
-print("IN ZIPCODE");
-printf(get(zips, highest_wtm_index));
-
-print("HIGHEST RATIO OF MEN TO WOMEN");
-printf(highest_mtw);
-print("IN ZIPCODE");
-printf(get(zips, highest_mtw_index));
-
-
-/* Does the median age of a zipcode have an impact on gender ratios?
- * First, we will use a chi-squared test to determine if gender ratios
- * differ by zipcode */
 
 num list total_pop_zip = getCol(pop, 1);
 num list median_age_zip = getCol(pop, 2);
@@ -125,11 +87,3 @@ printf(size);
 
 /* It should print 18554.1 */
 /* Based on this chi-squared value, gender ratios definitely differ depending on zipcode! */
-
-/* Create a new table: median age, number of men, number of women */
-table<num, num> age_gender_ratios = <>;
-
-row = 0;
-for(row; row < size; row++) {
-	addRow(age_gender_ratios, get(median_age_zip, row), get(numFemales, row)/get(numMales, row));
-}

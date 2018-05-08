@@ -1,0 +1,35 @@
+
+/* Create a new table: median age, female to male ratio */
+
+/*
+* COLUMNS
+* 0: Zip Code
+* 1: Total Population
+* 2: Median Age
+* 3: Total Males
+* 4: Total Females
+* 5: Total Households
+* 6: Average Household Size
+*/
+
+table<num, num, num, num, num, num, num> pop = input("censuspops.csv");
+
+num list median_age_zip = getCol(pop, 2);
+num list numMales = getCol(pop, 3);
+num list numFemales = getCol(pop, 4);
+
+num size = length(median_age_zip);
+
+table<num, num> age_gender_ratios = <>;
+
+num row = 0;
+for(row; row < size; row++) {
+	num females = get(numFemales, row);
+	num males = get(numMales, row);
+
+	if(males > 0) {
+		addRow(age_gender_ratios, get(median_age_zip, row), females/males);
+	}
+}
+
+out(age_gender_ratios);
