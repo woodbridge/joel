@@ -1,0 +1,11 @@
+table<num, num> table1 = <1, 2; 3, 4>;
+
+table<num, num> a ( table<num, num> tab ) {
+	return tab;
+}
+
+table<num, num> table2 = a(table1);
+
+alter(getCol(table2, 0), 0, 5);
+
+out(table2);
