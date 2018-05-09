@@ -110,7 +110,6 @@ let trans (functions, statements) =
     | A.String -> str_t
     | A.List(t) -> get_list_pointer_type t
     | A.Table(t) -> table_struct_pointer t
-    | _ -> raise (Failure ("Error: Type Not Yet Implemented " ^ (A.string_of_typ ty)))
   in
 
 
@@ -637,8 +636,6 @@ let trans (functions, statements) =
             in let new_scope_r = ref new_scope in
             let build builder stmt = build_statement new_scope_r stmt builder fdecl
             in List.fold_left build builder sl
-          (* | SAppend(e1, e2, e3) ->
-            let  *)
           | SOut column_list ->
               if List.length column_list > 0 then 
                 let generated_lists = List.map (expr builder scope) column_list in
@@ -720,12 +717,6 @@ let trans (functions, statements) =
 
                 L.builder_at_end context merge_bb
             else builder
-
-
-(*               builder
-          let (t1, _) = e in
-          let e' = expr builder scope e in
-          L.build_call (list_length (t1)) (Array.of_list [e']) "_FUNC_VAL" builder *)
 
           | SStmtVDecl(t, n, e) -> let _ = add_variable scope t n e builder in builder
           | SAlter(e1, e2, e3) ->
@@ -938,6 +929,7 @@ let trans (functions, statements) =
             let iterator_check_bb = L.append_block context "check_iterator" the_function in
             let iterator_check_builder = L.builder_at_end context iterator_check_bb in
 
+            (* use this to check for the edge case of zero value iterator *)
             let iterator_check =
               L.build_fcmp L.Fcmp.Oeq (L.build_load iterator_alloc "TEMP" iterator_check_builder) (L.const_float num_t 0.0) "TEMP" iterator_check_builder
             in
@@ -1042,41 +1034,43 @@ let trans (functions, statements) =
           | SForEach(t, id, e2, body) ->
             let index_var_name = "foreach_index" in
               (* inital value *)
-              let expr_a = SStmtVDecl(Ast.Num, index_var_name, (Ast.Num, SIntegerLiteral(0))) in
-                let expr_x = SStmtVDecl(t, id, (Ast.Void, SNoexpr)) in
+            let expr_a = SStmtVDecl(Ast.Num, index_var_name, (Ast.Num, SIntegerLiteral(0))) in
+            let expr_x = SStmtVDecl(t, id, (Ast.Void, SNoexpr)) in
 
                 (* get the actual type of the list to pass to length call *)
-                let (ty, e2') = e2 in
-                  let list_length = match ty with
-                      A.List(ty) -> (A.Num, SLength (ty, e2') )
-                    | _ -> raise(Failure("fail"))
-                  in
+            let (ty, e2') = e2 in
+            let list_length = match ty with
+                A.List(ty) -> (A.Num, SLength (ty, e2') )
+              | _ -> raise(Failure("fail"))
+            in
 
-                let expr_b = (A.Bool, SBinop((A.Num, (SId(index_var_name))), A.Less, list_length)) in
-                  let expr_c = (A.Num, SPop(index_var_name, A.Inc)) in
-                    let list_lookup = (t, SListAccess(e2, (Ast.Num, SId(index_var_name))))
-                      in
-                    let list_lookup_assign = SExpr(t, SAssign(id, list_lookup)) in
+            let expr_b = (A.Bool, SBinop((A.Num, (SId(index_var_name))), A.Less, list_length)) in
+            let expr_c = (A.Num, SPop(index_var_name, A.Inc)) in
+            let list_lookup = (t, SListAccess(e2, (Ast.Num, SId(index_var_name)))) in
+            let list_lookup_assign = SExpr(t, SAssign(id, list_lookup)) in
 
-              build_statement scope
-
+            build_statement scope
               ( SBlock [ expr_a;
                          expr_x;
-                        SWhile(expr_b, SBlock[ list_lookup_assign ;
-                                            body ;
-                                           SExpr expr_c] ) ] )
-              builder fdecl
+                        SWhile( expr_b, 
+                                SBlock[ list_lookup_assign ;
+                                        body ;
+                                        SExpr expr_c ] 
+                              ) 
+                        ] 
+              ) builder fdecl
 
-          | SReturn e -> let _ = match fdecl.styp with
-                              (* Special "return nothing" instr *)
-                              A.Void -> L.build_ret_void builder 
-                              (* Build return statement *)
-                            | _ -> L.build_ret (expr builder scope e) builder 
-                     in builder
+          | SReturn e -> 
+            let _ = match fdecl.styp with
+                (* Special "return nothing" instr *)
+                A.Void -> L.build_ret_void builder 
+                (* Build return statement *)
+              | _ -> L.build_ret (expr builder scope e) builder 
+            in builder
 
           | _ as t ->
             let str = Sast.string_of_sstmt t in
-              Printf.printf "type: %s." str; raise (Failure ("Error: Not Yet Implemented"))
+            Printf.printf "type: %s." str; raise (Failure ("Error: Not Yet Implemented"))
       in
       let build_function_body fdecl =
         let (a_func, _) = StringMap.find fdecl.sfname function_decls
@@ -1110,22 +1104,22 @@ let trans (functions, statements) =
         let function_reducer f_builder stmt = 
           build_statement new_function_scope_r stmt f_builder fdecl
         in
-        let function_builder = List.fold_left function_reducer function_builder fdecl.sbody
-         in 
-          add_terminal function_builder (match fdecl.styp with
+        let function_builder = List.fold_left function_reducer function_builder fdecl.sbody in
+        add_terminal function_builder 
+        ( match fdecl.styp with
             A.Void -> L.build_ret_void
-          | t -> L.build_ret (L.const_null (ltype_of_typ t)))
+          | t -> L.build_ret (L.const_null (ltype_of_typ t))
+        )
       in
       let _ = 
         List.iter build_function_body functions
       in
 
-        let statement_reducer builder stmt = build_statement global_scope stmt builder dummy in
-          (* Builder gets updated with each call *)
-          let final_builder = List.fold_left statement_reducer builder statements in
-            make_return final_builder; ()
-        (* List.iter (fun stmt -> let _ = build_statement global_scope stmt builder in ()) statements; make_return builder; () *)
+      let statement_reducer builder stmt = build_statement global_scope stmt builder dummy in
+      (* Builder gets updated with each call *)
+      let final_builder = List.fold_left statement_reducer builder statements in
+      make_return final_builder; ()
 
   in
-    build_program_body (statements);
-    the_module
+  build_program_body (statements);
+  the_module
