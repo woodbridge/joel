@@ -1,0 +1,9 @@
+table<num, num, num> table1 = <1, 2, 3; 3, 4, 5>;
+
+table<num, num> a ( table<num, num> tab ) {
+	return tab;
+}
+
+table<num, num> table2 = a(table1);
+
+out(table2);

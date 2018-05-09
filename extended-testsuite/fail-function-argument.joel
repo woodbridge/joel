@@ -1,0 +1,5 @@
+num a ( ) {
+	return 1;
+}
+
+a("hello");
