@@ -1,7 +1,0 @@
-bool truth = false;
-
-if(true) {
-  truth = true;  
-}
-
-print(truth);
