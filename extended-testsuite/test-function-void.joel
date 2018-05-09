@@ -1,0 +1,6 @@
+void a ( num b, num c ) {
+	b + c;
+}
+
+a(1, 2);
+print("Done");

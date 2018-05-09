@@ -1,0 +1,5 @@
+num a ( num b, num c ) {
+	return b + c;
+}
+
+printf(a(1, 2));

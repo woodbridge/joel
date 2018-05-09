@@ -1,0 +1,5 @@
+bool a () {
+	return true;
+}
+
+printb(a());

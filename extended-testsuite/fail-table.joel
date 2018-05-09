@@ -1,0 +1,1 @@
+table<num, num> t = <1, 2; "hi", 4>;

@@ -1,0 +1,4 @@
+num list a = [1, 2, 3];
+num list b = a;
+
+printf(get(b, 0));
