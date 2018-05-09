@@ -7,7 +7,12 @@ module StringMap = Map.Make(String)
 module E = Exceptions
 
 let check (funcs, statements) =
-
+  let dummy = { typ = Num;
+                fname = "_test";
+                formals = [];
+                body = [];
+              }
+  in
   let check_binds (to_check : bind list) = 
     let check_it checked binding = 
       let void_err = "illegal void " ^  snd binding
@@ -272,7 +277,7 @@ let check (funcs, statements) =
   in
 
   (* Convert a statement to an sstmt. *)
-  let rec convert_statement scope expr = match expr with
+  let rec convert_statement scope expr fdecl = match expr with
     Expr e -> SExpr(convert_expr scope e)
   | StmtVDecl(ty, id, exp) -> convert_vardecl scope (ty, id, exp) (* Returns a SStmtVDecl *)
   | Append(e1, e2) ->
@@ -285,7 +290,7 @@ let check (funcs, statements) =
     if same_type then SAppend((t1, e1'), (t2, e2'))
     else raise E.InvalidArgument
   | TableAppend(e1, e2) ->
-    convert_statement scope (Block( (List.mapi (fun i _ -> Append(TableAccess(e1, i), List.nth e2 i)) e2) ) )
+    convert_statement scope (Block( (List.mapi (fun i _ -> Append(TableAccess(e1, i), List.nth e2 i)) e2) ) ) fdecl
   | Out(e) -> 
       let (t, e') = convert_expr scope e in
       let inner_tys = match t with 
@@ -310,67 +315,76 @@ let check (funcs, statements) =
       }
       in let new_scope_r = ref new_scope in
       let rec convert_statement_list = function
-          [Return _ as s] -> [convert_statement new_scope_r s]
+          [Return _ as s] -> [convert_statement new_scope_r s fdecl]
         | Return _ :: _   -> raise (E.NothingAfterReturn)
         | Block sl :: ss  -> convert_statement_list (sl @ ss) (* Flatten blocks *)
-        | s :: ss         -> convert_statement new_scope_r s :: convert_statement_list ss
+        | s :: ss         -> convert_statement new_scope_r s fdecl :: convert_statement_list ss
         | []              -> []
       in SBlock(List.rev (convert_statement_list (List.rev sl)))
-  | If(p, b1, b2) -> SIf(check_bool_expr scope p, convert_statement scope b1, convert_statement scope b2)
+  | If(p, b1, b2) -> SIf(check_bool_expr scope p, convert_statement scope b1 fdecl, convert_statement scope b2 fdecl)
   | For(e1, e2, e3, st) ->
-    SFor(convert_expr scope e1, check_bool_expr scope e2, convert_expr scope e3, convert_statement scope st)
+    SFor(convert_expr scope e1, check_bool_expr scope e2, convert_expr scope e3, convert_statement scope st fdecl)
   | ForDecl(e1_ty, e1_id, e1_ex, e2, e3, st) ->
       let (e_ty, e') = convert_expr scope e1_ex in
       let same_type = e1_ty = e_ty in
       if same_type then
-        SForDecl(e_ty, e1_id, (e_ty, e'), check_bool_expr scope e2, convert_expr scope e3, convert_statement scope st)
+        SForDecl(e_ty, e1_id, (e_ty, e'), check_bool_expr scope e2, convert_expr scope e3, convert_statement scope st fdecl)
         (* TODO: fix to add better error message *)
         else raise(E.InvalidAssignment)
   | ForEach(t, var_name, e2, body) ->
     let _ = add_variable scope t var_name in
-      SForEach(t, var_name, convert_expr scope e2, convert_statement scope body)
+      SForEach(t, var_name, convert_expr scope e2, convert_statement scope body fdecl)
   | While(e, st) ->
-    SWhile(convert_expr scope e, convert_statement scope st)
-  | Return _ ->
-    raise (E.ReturnsOutsideFunction)
+    SWhile(convert_expr scope e, convert_statement scope st fdecl)
+
+
+  | Return e -> match fdecl.fname with
+             "_test" -> raise (E.ReturnsOutsideFunction)
+
+            | _      -> let (t, e') = convert_expr scope e 
+                        in
+                        if t = fdecl.typ 
+                        then SReturn (t, e') 
+                        else raise (
+                          Failure ("return gives " ^ string_of_typ t ^ " expected " ^
+                          string_of_typ fdecl.typ ^ " in " ^ string_of_expr e))
   in
+
 
   let convert_statements statement =
-    convert_statement global_scope statement
+    convert_statement global_scope statement dummy
   in
-
-  let statements' = List.map convert_statements (List.rev statements)
+  let statements' = 
+    List.map convert_statements (List.rev statements)
   in 
   let convert_function_statements fxn func_scope statement = 
-    match statement with
-    | Return e -> let (t, e') = convert_expr func_scope e in
-        if t = fxn.typ then SReturn (t, e') 
-        else raise (
-      Failure ("return gives " ^ string_of_typ t ^ " expected " ^
-       string_of_typ fxn.typ ^ " in " ^ string_of_expr e))
-
-    | _ -> convert_statement func_scope statement
+     convert_statement func_scope statement fxn
   in 
 
   let check_function func = 
-    let new_function_scope = {
-      variables = StringMap.empty;
-      parent = Some(!global_scope);
-    }
+    let formals' = 
+      check_binds func.formals
     in
-    let new_function_scope_r = ref new_function_scope in
-    (* add formals into that scope *)
-    (* return statements cannot be in a block - make note in LRM - not necessarily see below *)
-    (* add a boolean to check statement which will enable to do return checking
-    inside blocks *)
-    let formals' = check_binds func.formals in
-    { styp = func.typ;
-      sfname = func.fname;
-      sformals = formals';
-      sbody = List.map (convert_function_statements func new_function_scope_r) func.body
-    }
+    let formals'm = 
+      List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+                  StringMap.empty formals'
+    in
+    let new_function_scope = 
+      {
+        variables = formals'm;
+        parent = Some(!global_scope);
+      }
+    in
+    let new_function_scope_r = 
+      ref new_function_scope 
+      in
+        { styp = func.typ;
+        sfname = func.fname;
+        sformals = formals';
+        sbody = List.map (convert_function_statements func new_function_scope_r) func.body
+      }
 
-in (List.map check_function funcs, statements')
+  in (List.map check_function funcs, statements')
 
 let rec convert_csv exp = match exp with
     StringLiteral s -> (String, SStringLiteral s)

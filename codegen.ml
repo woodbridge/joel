@@ -373,7 +373,6 @@ let trans (functions, statements) =
     let builder = L.builder_at_end context (L.entry_block the_function) in
       let str_format_str  = L.build_global_stringptr "%s\n" "fmt" builder
       and int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
-      and num_format_str = L.build_global_stringptr "%f\n" "fmt" builder
       and rounded_num_format_str = L.build_global_stringptr "%.2f\n" "fmt" builder
       and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
       and csv_str_item_format_str  = L.build_global_stringptr "%s," "fmt" builder
