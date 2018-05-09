@@ -1,0 +1,3 @@
+bool a = true;
+a = !a;
+printb(a);

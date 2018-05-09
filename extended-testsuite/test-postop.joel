@@ -1,0 +1,5 @@
+num a = 1;
+a++;
+printf(a);
+a--;
+printf(a);

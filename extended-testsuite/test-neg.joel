@@ -1,0 +1,3 @@
+num a = 3;
+a = -a;
+printf(a);

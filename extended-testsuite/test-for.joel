@@ -1,0 +1,4 @@
+num i = 0;
+for(i; i < 3; i++) {
+	printf(i);
+}
