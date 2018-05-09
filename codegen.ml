@@ -637,7 +637,7 @@ let trans (functions, statements) =
               parent = Some(scope);
             }
             in let new_scope_r = ref new_scope in
-            let build builder stmt = build_statement new_scope_r stmt builder dummy
+            let build builder stmt = build_statement new_scope_r stmt builder fdecl
             in List.fold_left build builder sl
           (* | SAppend(e1, e2, e3) ->
             let  *)
@@ -978,12 +978,12 @@ let trans (functions, statements) =
               let branch_instr = L.build_br merge_bb in
             (* create then bb *)
             let then_bb = L.append_block context "then" the_function in
-              let then_builder = build_statement scope then_stmt (L.builder_at_end context then_bb) dummy in
+              let then_builder = build_statement scope then_stmt (L.builder_at_end context then_bb) fdecl in
               let () = add_terminal then_builder branch_instr in
 
             (* create else bb *)
             let else_bb = L.append_block context "else" the_function in
-              let else_builder = build_statement scope else_stmt (L.builder_at_end context else_bb) dummy in
+              let else_builder = build_statement scope else_stmt (L.builder_at_end context else_bb) fdecl in
               let () = add_terminal else_builder branch_instr in
 
             let _ = L.build_cond_br bool_val then_bb else_bb builder in
@@ -1009,7 +1009,7 @@ let trans (functions, statements) =
               L.append_block context "while_body" the_function
             in
             let while_builder =
-              build_statement scope body (L.builder_at_end context body_bb) dummy
+              build_statement scope body (L.builder_at_end context body_bb) fdecl
             in
             let () =
               add_terminal while_builder (L.build_br pred_bb)
@@ -1025,7 +1025,7 @@ let trans (functions, statements) =
           | SFor(e1, e2, e3, body) -> build_statement scope
               ( SBlock [SExpr e1 ;
                         SWhile(e2, SBlock[ body ;
-                                           SExpr e3] ) ] ) builder dummy
+                                           SExpr e3] ) ] ) builder fdecl
 
           | SForEach(t, id, e2, body) ->
             let index_var_name = "foreach_index" in
