@@ -56,9 +56,7 @@ let trans (functions, statements) =
 
   let num_list_item_struct = L.named_struct_type context "num_list_item" in
   let bool_list_item_struct = L.named_struct_type context "bool_list_item" in
-  let string_list_item_struct = L.named_struct_type context "string_list_item" in
-
-  let num_list_item_pointer =
+  let string_list_item_struct = L.named_struct_type context "string_list_item" in let num_list_item_pointer =
     L.pointer_type num_list_item_struct
   in
   let bool_list_item_pointer =
@@ -737,6 +735,8 @@ let trans (functions, statements) =
             let (t, _) = e1 in
             let list_item_pointer = get_list_pointer_type (list_inner_type t) in
             let list_item_struct = get_list_type (list_inner_type t) in
+
+            (* make a copy of the head item of the list so that we don't dereference it *)
             let copy_of_mem_addr =
               L.build_alloca list_item_struct "TEMP" builder
             in
@@ -746,6 +746,7 @@ let trans (functions, statements) =
             let () =
               ignore(L.build_store orig_mem_addr copy_of_mem_addr builder)
             in
+            (* store our new created pointer to list head *)
             let pointer_to_head =
               L.build_alloca list_item_pointer "TEMP" builder
             in
@@ -755,6 +756,7 @@ let trans (functions, statements) =
             let loaded_pointer_to_head =
               L.build_load pointer_to_head "TEMP" builder
             in
+            (* use this to keep track of the boolean flag denoting list end *)
             let pointer_to_flag =
               L.build_struct_gep loaded_pointer_to_head 2 "TEMP" builder
             in
@@ -767,10 +769,12 @@ let trans (functions, statements) =
             let () =
               ignore(L.build_store loaded_pointer_to_flag current_flag builder)
             in
+            (* build an iterator for checking if we actually loop at all *)
             let iterator_alloc = L.build_alloca num_t "TEMP" builder in
             let () =
               ignore(L.build_store (L.const_float num_t 0.0) iterator_alloc builder)
             in
+            (* create predicate block *)
             let pred_bb = L.append_block context "while" the_function in
             let _ = L.build_br pred_bb builder in
             let pred_builder = L.builder_at_end context pred_bb in
@@ -783,11 +787,13 @@ let trans (functions, statements) =
             let () =
               ignore(L.build_store loaded_new_pointer_to_flag current_flag pred_builder)
             in
+            (* create the comparison for our loop, look to see if we reach the desired index *)
             let comparison =
               L.build_fcmp L.Fcmp.Olt (L.build_load iterator_alloc "TEMP" pred_builder) e2' "TEMP" pred_builder
             in
             let body_bb = L.append_block context "while_body" the_function in
             let while_builder = L.builder_at_end context body_bb in
+            (* iterate our pointer to the next list item *)
             let loaded_iterator = L.build_load iterator_alloc "TEMP" while_builder in
             let new_val =
               L.build_fadd loaded_iterator (L.const_float num_t 1.0) "TEMP" while_builder
@@ -812,12 +818,14 @@ let trans (functions, statements) =
             in
             let () = add_terminal while_builder (L.build_br pred_bb) in
 
+            (* check our iterator to see if we iterated at all *)
             let iterator_check_bb = L.append_block context "check_iterator" the_function in
             let iterator_check_builder = L.builder_at_end context iterator_check_bb in
 
             let iterator_check =
               L.build_fcmp L.Fcmp.Oeq (L.build_load iterator_alloc "TEMP" iterator_check_builder) (L.const_float num_t 0.0) "TEMP" iterator_check_builder
             in
+            (* handle the edge case that we don't iterate, if thats the case then alter the original head, not copy *)
             let handle_zero_bb = L.append_block context "handle_zero_case" the_function in
             let handle_zero_builder = L.builder_at_end context handle_zero_bb in
             let () =
@@ -848,6 +856,8 @@ let trans (functions, statements) =
 
             let list_item_pointer = get_list_pointer_type (list_inner_type t) in
             let list_item_struct = get_list_type (list_inner_type t) in
+
+            (* copy memory address so that we don't dereference the header *)
             let copy_of_mem_addr =
               L.build_alloca list_item_struct "TEMP" builder
             in
@@ -866,6 +876,7 @@ let trans (functions, statements) =
             let loaded_pointer_to_head =
               L.build_load pointer_to_head "TEMP" builder
             in
+            (* get pointer to flag to see if we reach the list end *)
             let pointer_to_flag =
               L.build_struct_gep loaded_pointer_to_head 2 "TEMP" builder
             in
@@ -878,6 +889,7 @@ let trans (functions, statements) =
             let () =
               ignore(L.build_store loaded_pointer_to_flag current_flag builder)
             in
+            (* make iterator to track our position in list *)
             let iterator_alloc = L.build_alloca num_t "TEMP" builder in
             let () =
               ignore(L.build_store (L.const_float num_t 0.0) iterator_alloc builder)
