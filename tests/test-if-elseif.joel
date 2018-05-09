@@ -1,7 +1,0 @@
-if(true) {
-  
-} else if (true) {
-  
-}
-
-print("Success");

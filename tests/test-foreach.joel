@@ -1,6 +1,0 @@
-list ages = [1, 2, 3, 4, 5];
-num total = 0;
-
-foreach(num age in ages) {
-  total += 10;
-}

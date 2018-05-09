@@ -1,0 +1,7 @@
+table<num, num, string> stuff = input("test.csv");
+
+string list animals = getCol(stuff, 2);
+
+foreach(string animal in animals) {
+	print(animal);
+}

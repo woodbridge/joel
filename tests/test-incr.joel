@@ -1,5 +1,0 @@
-num a = 1;
-num b = a++;
-
-print(a); /* 2 */
-print(b); /* 1 */
