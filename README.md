@@ -7,7 +7,7 @@
 - Nadav Gov-Ari: ng2604@columbia.edu
 
 ### Requirements
-Requires python 3.6.4 and LLI with LLVM 3.8.1 or 6.0.0
+Requires python 3.6.4 and LLI with LLVM 6.0.0
 
 #### How to Compile the Compiler
 To run the script to compile the compiler, simply run ``python3 build.py``. If all went well, you should see ``SUCCESSFULLY BUILT COMPILER`` on the screen. Otherwise, you should see a ``FAIL`` message.
@@ -30,9 +30,9 @@ To run the script to compile the compiler, simply run ``python3 build.py``. If a
 
 #### To Run the Test Suite:
 - First, locate information about your copy of LLI. For example, running ``lli --version`` reveals that my LLI is running with LLVM 6.0.0. If your LLI runs something other than LLVM 6.0.0 or LLVM 3.8.1, please locate a copy of LLI on your system that does run it (ex. ``'/usr/local/opt/llvm@3.8/bin/lli-3.8'``)
-- If your LLI does not run the correct LLVM version, open extended-testsuite.py in a text editor. Go to the top of the file and change ``LLI = "lli"`` to whatever path points to your copy of lli.
-- Save extended-testsuite.py.
-- To run the test suite, run ``python3 extended-testsuite.py``. Make sure you are in the ``joel`` top-level directory!!
+- If your LLI does not run the correct LLVM version, open testsuite.py in a text editor. Go to the top of the file and change ``LLI = "lli"`` to whatever path points to your copy of lli.
+- Save testsuite.py.
+- To run the test suite, run ``python3 testsuite.py``. Make sure you are in the ``joel`` top-level directory when you do this!!
 - If all went well, you should see ``TEST SUITE PASSED`` on the screen. Otherwise, you should see a ``TEST SUITE FAILED`` message and the test(s) that failed and the lines that differ between the gold standard and the actual output.
 
 

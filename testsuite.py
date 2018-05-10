@@ -75,7 +75,7 @@ def test_pass():
 	print("*** POSITIVE TEST CASES ***")
 	print("(These should SUCCEED)")
 
-	files = glob.glob("extended-testsuite/test-*.joel")
+	files = glob.glob("testsuite/test-*.joel")
 	
 	if len(files) == test(files):
 		return True
@@ -86,7 +86,7 @@ def test_fail():
 	print("*** NEGATIVE TEST CASES ***")
 	print("(These should SUCCEED)")
 
-	files = glob.glob("extended-testsuite/fail-*.joel")
+	files = glob.glob("testsuite/fail-*.joel")
 	
 	if len(files) == test(files):
 		return True
