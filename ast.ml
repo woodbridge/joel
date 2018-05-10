@@ -7,7 +7,7 @@ type uop = Not | Neg
 
 type pop = Inc | Dec
 
-type typ = Num | String | Bool | List of typ | Dict | Table of typ list | Void
+type typ = Num | String | Bool | List of typ | Table of typ list | Void
 
 type bind = typ * string
 
@@ -17,7 +17,6 @@ type expr =
   | StringLiteral of string
   | BoolLiteral of bool
   | ListLiteral of expr list
-  | DictLiteral of (expr * expr) list
   | TableLiteral of (expr list) list
   | ListAccess of expr * expr
   | TableAccess of expr * int
@@ -88,7 +87,6 @@ let rec string_of_typ = function
   | String -> "string"
   | Bool -> "bool"
   | List(t) -> "list: " ^ string_of_typ t
-  | Dict -> "dict"
   | Table(lst) ->
       let concat_ocaml_string a b = a ^ (string_of_typ b) ^ " " in
       List.fold_left concat_ocaml_string "table " lst
@@ -105,7 +103,6 @@ let rec string_of_expr = function
   | TableAccess(_, _) -> "Table Access"
   | Length(_) -> "List Length"
   | In(_) -> "Table"
-  | DictLiteral(_) -> "Dict"
   | TableLiteral(rows) -> 
     let string_of_row row =
       String.concat ", " (List.map string_of_expr (List.rev row))

@@ -135,10 +135,6 @@ let check (funcs, statements) =
         if ty2 = ty then (ty2, e') else raise(E.MixedTypes)
       in
       (List(ty), SListLiteral(List.map check_type row))
-    | DictLiteral row ->
-      let convert_pair (e1, e2) =
-        (convert_expr scope e1, convert_expr scope e2)
-      in (Dict, SDictLiteral(List.map convert_pair row))
     | ListAccess(e1, e2) ->
       let (t1, e1') = convert_expr scope e1
       and (t2, e2') = convert_expr scope e2 in

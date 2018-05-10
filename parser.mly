@@ -13,7 +13,7 @@ open Ast
 %token AND OR XOR NOT
 
 
-%token NUM STRING BOOL LIST DICT TABLE TRUE FALSE
+%token NUM STRING BOOL LIST TABLE TRUE FALSE
 %token <int> INT_LIT
 %token <string> ID FLOAT_LIT STRING_LIT
 %token EOF
@@ -125,20 +125,12 @@ primitives:
   | FALSE                 { BoolLiteral(false)      }
   | LSQBRACE list_literal RSQBRACE
                           { ListLiteral(List.rev $2) }
-  | LSQBRACE dict_literal RSQBRACE
-                          { DictLiteral(List.rev $2) }
 
 list_literal:
     primitives                    { [$1]      }
   | list_literal COMMA primitives { $3 :: $1  }
   | /* nothing */                 { []        }
 
-key_val:
-    primitives COLON primitives   { ($1,$3)   }
-
-dict_literal:
-    key_val   { [$1] }
-  | dict_literal COMMA key_val    { $3 :: $1  }
 
 table_literal:
     list_literal                  { [$1]      }
@@ -169,7 +161,6 @@ typ:
   | STRING          { String  }
   | BOOL            { Bool    }
   | typ LIST        { List($1)}
-  | DICT            { Dict    }
   | TABLE LT typ_list GT
                     {Table(List.rev $3)}
   | VOID            { Void    }
